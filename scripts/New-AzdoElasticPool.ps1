@@ -1,3 +1,7 @@
+<#
+Testing AzDO script
+#>
+
 param(
     [string]
     $PAT = $env:SYSTEM_ACCESSTOKEN,
@@ -12,15 +16,18 @@ param(
     $ServiceEndpointScope,
 
     [string]
+    $Org,
+
+    [string]
+    $ProjectName,
+
+    [string]
     $AzureId
 )
 
-$projectName = "vmss"
 
-$org = "anthony-skidmore"
 $method = "GET"
 $url = "https://dev.azure.com/$org/_apis/distributedtask/elasticpools?api-version=6.1-preview.1"
-
 
 $token = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes(":$($PAT)"))
 
@@ -29,7 +36,7 @@ Write-Host Set authorization headers
 $headers = @{authorization = "Basic $token" }
 
 #Invoke REST API
-Write-Host Invoke REST API
+Write-Host "Invoke REST API"
 
 $url= "https://dev.azure.com/$org/_apis/projects?api-version=6.1-preview.4"
 $projects = Invoke-RestMethod $url -Method $method -Headers $headers -ContentType 'application/json'
