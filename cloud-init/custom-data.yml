@@ -1,0 +1,17 @@
+---
+
+#cloud-config
+
+ssh_authorized_keys:
+  - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDquhaMvyJfe47nqZEQKewtFeO98cYJWjOPJ8cLjzOOWMCgcfP/W0bvHwlCNkWbaeOSA6BPvjjCB/FSFJ9wkQw92OT5Mj0BZJitAEjrkELirnS8pNbI1x5YR7YL4YWMVAjNHk7OBe75CrCTv3lSqI5iVhcDjiG1Rf3hnYVCBOeMLfTqLEQWjce+kVvglRAbDXLet9tfWcqr1tIHOBS8+TNPUloWa4wvSRLp9EtzOHGCZNL8+mkCsniLLiDC+ODsvFGw7y8glooCR6IcawPXszAQA0JKR4bAkdhBZcaMZLkjBxUcxdZgwVlDiTuC1x5KvKTAOJfZpn9nZu+No6voonUJ
+
+runcmd:
+  - "echo \"running as: $(whoami)\""
+  - 'find /opt/post-generation -mindepth 1 -maxdepth 1 -type f -name "*.sh" -exec bash {} \;'
+  - "timeout 15m bash -c 'until pidof Agent.Listener; do echo \"Waiting for Agent.Listener\" && sleep 10; done'"
+  - 'sed -i.bak "/secure_path/d" /etc/sudoers'
+  - 'pathFromEnv=$(cut -d= -f2 /etc/environment | tail -1); echo "$pathFromEnv >> /etc/sudoers"; echo "Defaults secure_path=\"$pathFromEnv\"" >> /etc/sudoers'
+  - 'pathFromEnv=$(cut -d= -f2 /etc/environment | tail -1); echo "$pathFromEnv > /agent.path"; echo "$pathFromEnv" > /agent/.path'
+  - "runPID=$(ps aux | grep -E '^AzDevOps.+/bin/bash /agent/run.sh$' | awk '{print $2}') && echo \"killing runPID: $runPID\" && kill $runPID"
+  - "agentPID=$(ps aux | grep -E '^AzDevOps.+/agent/bin/Agent.Listener run$' | awk '{print $2}') && echo \"killing agentPID: $agentPID\" && kill $agentPID"
+  - "echo \"running: sudo -E runuser AzDevOps -c '/bin/bash /agent/run.sh\""
