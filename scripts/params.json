@@ -2,7 +2,7 @@
   "serviceEndpointId": "360581cb-8176-4dab-ac64-318ea40a0bb7",
   "serviceEndpointScope": "74699cfc-c147-4291-b944-90964b5dfba0",
   "azureId": "/subscriptions/1b2f8678-65b9-4dd5-8b4a-b15a949ee7ef/resourceGroups/RG-AZDO-AGENTS-01/providers/Microsoft.Compute/virtualMachineScaleSets/vmss-azdo-agents-02",
-  "maxCapacity": 1,
+  "maxCapacity": 2,
   "desiredIdle": 0,
   "recycleAfterEachUse": true,
   "maxSavedNodeCount": 0,

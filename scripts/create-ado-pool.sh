@@ -41,7 +41,7 @@ elastic_pools=$(curl -s -u ":$ADO_TOKEN" "https://dev.azure.com/$ADO_ORG/_apis/d
 
 echo "$elastic_pools"
 
-pool_name="test"
+pool_name="vmss"
 authorize_all_pipelines="True"
 auto_provision_project_pools="False"
 
