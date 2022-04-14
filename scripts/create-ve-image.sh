@@ -33,12 +33,14 @@ echo "$root_path"
 # Set defaults overridable by environment variables
 export AZ_RESOURCE_GROUP_NAME="${AZ_RESOURCE_GROUP_NAME:-rg-ve-images}"
 export AZ_LOCATION=${AZ_LOCATION:-uksouth}
-export AZ_ACG_RESOURCE_GROUP_NAME=${AZ_ACG_RESOURCE_GROUP_NAME:-rg-ve-sig-01}
-export AZ_ACG_NAME=${AZ_ACG_NAME:-sig_01}
+export AZ_ACG_RESOURCE_GROUP_NAME=${AZ_ACG_RESOURCE_GROUP_NAME:-rg-ve-acg-01}
+export AZ_ACG_NAME=${AZ_ACG_NAME:-acg_01}
 export VE_IMAGE_PUBLISHER=${VE_IMAGE_PUBLISHER:-actions}
 export VE_IMAGE_OFFER=${VE_IMAGE_OFFER:-virtual-environments}
 export VE_IMAGE_SKU=${VE_IMAGE_SKU:-Ubuntu2004}
 export VE_IMAGE_TYPE=${VE_IMAGE_TYPE:-Ubuntu2004}
+export VE_IMAGES_TO_KEEP=${VE_IMAGES_TO_KEEP:-}
+export VE_IMAGES_VERSION_START=${VE_IMAGES_VERSION_START:-1.0.0}
 export VE_RELEASE=${VE_RELEASE:-ubuntu20/20220405.4}
 export PACKER_LOG=${PACKER_LOG:-1}
 export PACKER_LOG_PATH=${PACKER_LOG_PATH:-$root_path/packer-log.txt}
@@ -51,6 +53,8 @@ echo "VE_IMAGE_PUBLISHER=${VE_IMAGE_PUBLISHER}"
 echo "VE_IMAGE_OFFER=${VE_IMAGE_OFFER}"
 echo "VE_IMAGE_SKU=${VE_IMAGE_SKU}"
 echo "VE_IMAGE_TYPE=${VE_IMAGE_TYPE}"
+echo "VE_IMAGES_TO_KEEP=${VE_IMAGES_TO_KEEP}"
+echo "VE_IMAGES_VERSION_START=${VE_IMAGES_VERSION_START}"
 echo "VE_RELEASE=${VE_RELEASE:-ubuntu20/20220405.4}"
 echo "PACKER_LOG=${PACKER_LOG}"
 echo "PACKER_LOG_PATH=${PACKER_LOG_PATH}"
@@ -63,11 +67,12 @@ fi
 
 git clone -b "$VE_RELEASE" --single-branch https://github.com/actions/virtual-environments.git "$root_path/virtual-environments"
 
-pwsh -File "$script_path/create-ve-image.ps1"
+# run PowerShell wrapper script to create packer image
+pwsh -File "$script_path/create-ve-image.ps1" -NonInteractive
 
 # get required outputs from packer log file
-ostype=$(grep -Po '^OSType:\s\K([a-zA-Z]+)$' "$PACKER_LOG_PATH/packer-log.txt")
-osdiskuri=$(grep -Po '^OSDiskUri:\s\K(.+)$' "$PACKER_LOG_PATH/packer-log.txt")
+ostype=$(grep -Po '^OSType:\s\K([a-zA-Z]+)$' "$PACKER_LOG_PATH")
+osdiskuri=$(grep -Po '^OSDiskUri:\s\K(.+)$' "$PACKER_LOG_PATH")
 storageaccount=$(echo "$osdiskuri" | grep -Po '^https://\K([a-zA-Z0-9]+)')
 
 printf "ostype: %s\n" "$ostype"
@@ -76,17 +81,21 @@ printf "storageaccount: %s\n" "$storageaccount"
 
 readarray -d "/" -t version_array <<< "$VE_RELEASE"
 
+echo "Logging into Azure..."
 az login --service-principal -u "$ARM_CLIENT_ID" -p "$ARM_CLIENT_SECRET" --tenant "$ARM_TENANT_ID"
 az account set --subscription "$ARM_SUBSCRIPTION_ID"
 
+echo "Creating resource group $AZ_ACG_RESOURCE_GROUP_NAME"
 az group create \
   --name "$AZ_ACG_RESOURCE_GROUP_NAME" \
   --location "$AZ_LOCATION"
 
+echo "Creating Azure Compute Gallery $AZ_ACG_NAME"
 az sig create \
   --resource-group "$AZ_ACG_RESOURCE_GROUP_NAME" \
   --gallery-name "$AZ_ACG_NAME"
 
+echo "Creating Azure Compute Gallery Image Definition $AZ_ACG_NAME"
 az sig image-definition create \
    --resource-group "$AZ_ACG_RESOURCE_GROUP_NAME" \
    --gallery-name "$AZ_ACG_NAME" \
@@ -97,39 +106,50 @@ az sig image-definition create \
    --os-type "$ostype" \
    --os-state generalized
 
+echo "Getting current Azure Compute Gallery Image Version versions"
+# using jq output due to issues with creating bash array with --output tsv
 readarray -t img_versions <<< "$(az sig image-version list \
   --gallery-image-definition "${version_array[0]}" \
   --gallery-name "$AZ_ACG_NAME" \
   --resource-group "$AZ_ACG_RESOURCE_GROUP_NAME" \
-  --output tsv \
-  --query '[].name')"
+  --output json \
+  --query '[].name' \
+  | jq -r .[])"
 
 echo "Found ${#img_versions[*]} current version definitions"
 echo "Current versions:"
 printf "%s\n " "${img_versions[@]}"
 
-# if the image list is empty start at 1.0.0 otherwise increment the last version
-if [[ ${#img_versions[*]} -eq 0 ]]
+# if the image list is empty start at $VE_IMAGES_VERSION_START otherwise increment the last version
+if [[ ${#img_versions[*]} -eq 1 ]] && [[ -z "${img_versions[0]}" ]]
 then
-  version="1.0.0"
-else
+  echo "Defaulting version to $VE_IMAGES_VERSION_START"
+  version="$VE_IMAGES_VERSION_START"
+elif [[ ${#img_versions[*]} -ge 1 ]] && [[ -n "${img_versions[0]}" ]]
   # sort array in reverse version order and get current latest version
+  echo "Getting version from az cli output"
   readarray -t sorted < <(for a in "${img_versions[@]}"; do echo "$a"; done | sort -Vr)
   latest="${sorted[0]}"
   # Fix shell script to increment semversion
   # https://stackoverflow.com/questions/59435639/fix-shell-script-to-increment-semversion
   version=$(echo "$latest" | awk 'BEGIN{FS=OFS="."} {$3+=1} 1')
+else
+  echo "Unable to determine state of image versions"
+  exit 1
 fi
+
+printf "new version will be: %s\n " "$version"
 
 
 if [[ $version =~ ^[0-9]{1,}\.[0-9]{1,}\.[0-9]{1,} ]]
 then
-  echo "New version will be $version"
+  echo "Validated version format successfully"
 else
-  echo "Failed to set new semver version"
+  echo "Failed to validate semver for new version"
   exit 1
 fi
 
+echo "Creating Azure Compute Gallery Image Version $version"
 az sig image-version create \
   --resource-group "$AZ_ACG_RESOURCE_GROUP_NAME" \
   --gallery-name "$AZ_ACG_NAME" \
@@ -138,3 +158,11 @@ az sig image-version create \
   --os-vhd-storage-account "/subscriptions/$ARM_SUBSCRIPTION_ID/resourceGroups/$AZ_RESOURCE_GROUP_NAME/providers/Microsoft.Storage/storageAccounts/$storageaccount" \
   --os-vhd-uri "$osdiskuri" \
   --tags "source_tag=$VE_RELEASE"
+
+# TODO: add image version cleanup
+# if [[ -n "$VE_IMAGES_TO_KEEP" ]] && [[ ${#sorted[*]} -gt $VE_IMAGES_TO_KEEP ]]
+# then
+#   end_index=$(($VE_IMAGES_TO_KEEP - 1))
+#   images_to_keep=${sorted[@]:0:$end_index}
+#   printf "%s\n" "${images_to_keep[@]}"
+# fi

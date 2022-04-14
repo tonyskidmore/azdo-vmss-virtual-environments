@@ -1,3 +1,4 @@
+Write-Host "Running PowerShell script: $MyInvocation.MyCommand.Path"
 Write-Host "script_path=$env:script_path"
 Write-Host "root_path=$env:root_path"
 

@@ -1,1 +1,5 @@
 .vscode/
+
+# virtual-environment content
+packer-log.txt
+virtual-environments/

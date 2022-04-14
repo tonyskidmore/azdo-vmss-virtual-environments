@@ -1,0 +1,11 @@
+// https://code.visualstudio.com/docs/remote/devcontainerjson-reference
+{
+  "dockerComposeFile": "docker-compose.yml",
+  "workspaceFolder": "/azure-tools",
+  "service": "azure-tools",
+  "extensions": [
+    "ms-vscode.azure-account",
+    "ms-azure-devops.azure-pipelines"
+  ]
+}
+
