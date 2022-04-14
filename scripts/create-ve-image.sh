@@ -126,6 +126,7 @@ then
   echo "Defaulting version to $VE_IMAGES_VERSION_START"
   version="$VE_IMAGES_VERSION_START"
 elif [[ ${#img_versions[*]} -ge 1 ]] && [[ -n "${img_versions[0]}" ]]
+then
   # sort array in reverse version order and get current latest version
   echo "Getting version from az cli output"
   readarray -t sorted < <(for a in "${img_versions[@]}"; do echo "$a"; done | sort -Vr)
