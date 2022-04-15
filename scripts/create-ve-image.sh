@@ -39,7 +39,7 @@ export VE_IMAGE_PUBLISHER=${VE_IMAGE_PUBLISHER:-actions}
 export VE_IMAGE_OFFER=${VE_IMAGE_OFFER:-virtual-environments}
 export VE_IMAGE_SKU=${VE_IMAGE_SKU:-Ubuntu2004}
 export VE_IMAGE_TYPE=${VE_IMAGE_TYPE:-Ubuntu2004}
-export VE_IMAGES_TO_KEEP=${VE_IMAGES_TO_KEEP:-}
+export VE_IMAGES_TO_KEEP=${VE_IMAGES_TO_KEEP:-2}
 export VE_IMAGES_VERSION_START=${VE_IMAGES_VERSION_START:-1.0.0}
 export VE_RELEASE=${VE_RELEASE:-ubuntu20/20220405.4}
 export PACKER_LOG=${PACKER_LOG:-1}
@@ -95,15 +95,26 @@ az sig create \
   --resource-group "$AZ_ACG_RESOURCE_GROUP_NAME" \
   --gallery-name "$AZ_ACG_NAME"
 
+# echo "Getting current Azure Compute Gallery Image Version versions"
+# # using jq output due to issues with creating bash array with --output tsv
+# readarray -t img_versions <<< "$(az sig image-version list \
+#   --gallery-image-definition "${version_array[0]}" \
+#   --gallery-name "$AZ_ACG_NAME" \
+#   --resource-group "$AZ_ACG_RESOURCE_GROUP_NAME" \
+#   --output json \
+#   --query '[].name' \
+#   | jq -r .[])"
+
+# get JSON output of existing image versions
 echo "Getting current Azure Compute Gallery Image Version versions"
-# using jq output due to issues with creating bash array with --output tsv
-readarray -t img_versions <<< "$(az sig image-version list \
+img_versions_json=$(az sig image-version list \
   --gallery-image-definition "${version_array[0]}" \
   --gallery-name "$AZ_ACG_NAME" \
   --resource-group "$AZ_ACG_RESOURCE_GROUP_NAME" \
-  --output json \
-  --query '[].name' \
-  | jq -r .[])"
+  --output json)
+
+# read image version names into array
+readarray -t img_versions <<< "$(echo "$img_versions_json" | jq -r .[].name)"
 
 echo "Creating Azure Compute Gallery Image Definition $AZ_ACG_NAME"
 az sig image-definition create \
@@ -161,9 +172,10 @@ az sig image-version create \
   --tags "source_tag=$VE_RELEASE"
 
 # TODO: add image version cleanup
-# if [[ -n "$VE_IMAGES_TO_KEEP" ]] && [[ ${#sorted[*]} -gt $VE_IMAGES_TO_KEEP ]]
-# then
-#   end_index=$(($VE_IMAGES_TO_KEEP - 1))
-#   images_to_keep=${sorted[@]:0:$end_index}
-#   printf "%s\n" "${images_to_keep[@]}"
-# fi
+if [[ -n "$VE_IMAGES_TO_KEEP" ]] && [[ ${#sorted[*]} -gt $VE_IMAGES_TO_KEEP ]]
+then
+  images_to_keep=("${sorted[@]:0:$VE_IMAGES_TO_KEEP}")
+  declare -p images_to_keep
+  printf "Images to keep:\n"
+  printf "%s\n" "${images_to_keep[@]}"
+fi
