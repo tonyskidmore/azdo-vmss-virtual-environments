@@ -3,9 +3,9 @@
 name: "ubuntu20"
 
 parameters:
-  - name: azureSubscription
-    type: string
-    default: ''
+  # - name: azureSubscription
+  #   type: string
+  #   default: ''
   - name: backendServiceArm
     type: string
     default: 'vmss'
@@ -57,7 +57,8 @@ jobs:
         inlineScript: |
           set -e
 
-          az_subscription=${{ parameters.azureSubscription }}
+          # az_subscription=${{ parameters.azureSubscription }}
+          az_subscription=""
 
           if [[ -n "$az_subscription" ]]
           then
