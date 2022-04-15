@@ -2,45 +2,6 @@
 
 set -e
 
-# functions
-
-# https://stackoverflow.com/questions/14366390/check-if-an-element-is-present-in-a-bash-array
-array_contains () {
-    local array="$1[@]"
-    local seeking=$2
-    local in=1
-    for element in "${!array}"; do
-        if [[ $element == "$seeking" ]]; then
-            in=0
-            break
-        fi
-    done
-    return $in
-}
-
-# end functions
-
-
-# https://github.com/actions/virtual-environments/blob/main/docs/create-image-and-azure-resources.md#service-principal
-if [[ -z $ARM_SUBSCRIPTION_ID || -z $ARM_TENANT_ID || -z $ARM_CLIENT_ID || -z $ARM_CLIENT_SECRET ]]; then
-  echo "Azure environment variables not set. Please set these values and re-run the script."
-  echo "This should be the values from a Service Principal with Contributor rights to the target subscription e.g.:"
-  echo 'az ad sp create-for-rbac -n "sp-virtual-environments-images" --role Contributor --scopes /subscriptions/00000000-0000-0000-0000-000000000000'
-  echo "{"
-  echo "  appId": "00000000-0000-0000-0000-000000000000",
-  echo "  displayName": "sp-virtual-enviroments-images",
-  echo "  password": "AAABjkwhs7862782626_BsGGjkskj_MaGv",
-  echo "  tenant": "00000000-0000-0000-0000-000000000000"
-  echo "}"
-  echo ""
-  echo " export ARM_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000"
-  echo " export ARM_TENANT_ID=00000000-0000-0000-0000-000000000000"
-  echo " export ARM_CLIENT_ID=00000000-0000-0000-0000-000000000000"
-  echo " export ARM_CLIENT_SECRET=AAABjkwhs7862782626_BsGGjkskj_MaGv"
-  echo "Note: The preceding space on each line above so that the command does not appear in command history"
-  exit 1
-fi
-
 # define variables
 script_path=$(dirname "$(realpath "$0")")
 export script_path
@@ -48,6 +9,18 @@ echo "script_path: $script_path"
 root_path=$(dirname "$script_path")
 export root_path
 echo "root_path: $root_path"
+
+# functions
+
+# shellcheck disable=SC1091
+. "$script_path/bash_functions/array_contains"
+# shellcheck disable=SC1091
+. "$script_path/bash_functions/check_arm_env_vars"
+
+# end functions
+
+# check that ARM_ envionment variables are set
+check_arm_env_vars
 
 # Set defaults overridable by environment variables
 export AZ_RESOURCE_GROUP_NAME="${AZ_RESOURCE_GROUP_NAME:-rg-ve-images}"

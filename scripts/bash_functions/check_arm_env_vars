@@ -1,0 +1,25 @@
+#!/bin/bash
+
+function check_arm_env_vars() {
+
+  # https://github.com/actions/virtual-environments/blob/main/docs/create-image-and-azure-resources.md#service-principal
+  if [[ -z $ARM_SUBSCRIPTION_ID || -z $ARM_TENANT_ID || -z $ARM_CLIENT_ID || -z $ARM_CLIENT_SECRET ]]; then
+    echo "Azure environment variables not set. Please set these values and re-run the script."
+    echo "This should be the values from a Service Principal with Contributor rights to the target subscription e.g.:"
+    echo 'az ad sp create-for-rbac -n "sp-virtual-environments-images" --role Contributor --scopes /subscriptions/00000000-0000-0000-0000-000000000000'
+    echo "{"
+    echo "  appId": "00000000-0000-0000-0000-000000000000",
+    echo "  displayName": "sp-virtual-enviroments-images",
+    echo "  password": "AAABjkwhs7862782626_BsGGjkskj_MaGv",
+    echo "  tenant": "00000000-0000-0000-0000-000000000000"
+    echo "}"
+    echo ""
+    echo " export ARM_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000"
+    echo " export ARM_TENANT_ID=00000000-0000-0000-0000-000000000000"
+    echo " export ARM_CLIENT_ID=00000000-0000-0000-0000-000000000000"
+    echo " export ARM_CLIENT_SECRET=AAABjkwhs7862782626_BsGGjkskj_MaGv"
+    echo "Note: The preceding space on each line above so that the command does not appear in command history"
+    exit 1
+  fi
+
+}
