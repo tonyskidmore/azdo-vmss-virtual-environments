@@ -2,6 +2,25 @@
 
 set -e
 
+# functions
+
+# https://stackoverflow.com/questions/14366390/check-if-an-element-is-present-in-a-bash-array
+array_contains () {
+    local array="$1[@]"
+    local seeking=$2
+    local in=1
+    for element in "${!array}"; do
+        if [[ $element == "$seeking" ]]; then
+            in=0
+            break
+        fi
+    done
+    return $in
+}
+
+# end functions
+
+
 # https://github.com/actions/virtual-environments/blob/main/docs/create-image-and-azure-resources.md#service-principal
 if [[ -z $ARM_SUBSCRIPTION_ID || -z $ARM_TENANT_ID || -z $ARM_CLIENT_ID || -z $ARM_CLIENT_SECRET ]]; then
   echo "Azure environment variables not set. Please set these values and re-run the script."
@@ -25,23 +44,26 @@ fi
 # define variables
 script_path=$(dirname "$(realpath "$0")")
 export script_path
-echo "$script_path"
+echo "script_path: $script_path"
 root_path=$(dirname "$script_path")
 export root_path
-echo "$root_path"
+echo "root_path: $root_path"
 
 # Set defaults overridable by environment variables
 export AZ_RESOURCE_GROUP_NAME="${AZ_RESOURCE_GROUP_NAME:-rg-ve-images}"
 export AZ_LOCATION=${AZ_LOCATION:-uksouth}
 export AZ_ACG_RESOURCE_GROUP_NAME=${AZ_ACG_RESOURCE_GROUP_NAME:-rg-ve-acg-01}
 export AZ_ACG_NAME=${AZ_ACG_NAME:-acg_01}
+export VE_REPO=${VE_REPO:-https://github.com/actions/virtual-environments.git}
 export VE_IMAGE_PUBLISHER=${VE_IMAGE_PUBLISHER:-actions}
 export VE_IMAGE_OFFER=${VE_IMAGE_OFFER:-virtual-environments}
 export VE_IMAGE_SKU=${VE_IMAGE_SKU:-Ubuntu2004}
 export VE_IMAGE_TYPE=${VE_IMAGE_TYPE:-Ubuntu2004}
 export VE_IMAGES_TO_KEEP=${VE_IMAGES_TO_KEEP:-2}
 export VE_IMAGES_VERSION_START=${VE_IMAGES_VERSION_START:-1.0.0}
-export VE_RELEASE=${VE_RELEASE:-ubuntu20/20220405.4}
+# export VE_RELEASE=${VE_RELEASE:-ubuntu20/20220405.4}
+export VE_RELEASE=${VE_RELEASE:-ubuntu20/latest}
+export PACKER_NO_COLOR=${PACKER_NO_COLOR:-1}
 export PACKER_LOG=${PACKER_LOG:-1}
 export PACKER_LOG_PATH=${PACKER_LOG_PATH:-$root_path/packer-log.txt}
 
@@ -49,13 +71,15 @@ echo "AZ_RESOURCE_GROUP_NAME=${AZ_RESOURCE_GROUP_NAME}"
 echo "AZ_LOCATION=${AZ_LOCATION}"
 echo "AZ_ACG_RESOURCE_GROUP_NAME=${AZ_ACG_RESOURCE_GROUP_NAME}"
 echo "AZ_ACG_NAME=${AZ_ACG_NAME}"
+echo "VE_REPO=${VE_REPO}"
 echo "VE_IMAGE_PUBLISHER=${VE_IMAGE_PUBLISHER}"
 echo "VE_IMAGE_OFFER=${VE_IMAGE_OFFER}"
 echo "VE_IMAGE_SKU=${VE_IMAGE_SKU}"
 echo "VE_IMAGE_TYPE=${VE_IMAGE_TYPE}"
 echo "VE_IMAGES_TO_KEEP=${VE_IMAGES_TO_KEEP}"
 echo "VE_IMAGES_VERSION_START=${VE_IMAGES_VERSION_START}"
-echo "VE_RELEASE=${VE_RELEASE:-ubuntu20/20220405.4}"
+echo "VE_RELEASE=${VE_RELEASE}"
+echo "PACKER_NO_COLOR=${PACKER_NO_COLOR}"
 echo "PACKER_LOG=${PACKER_LOG}"
 echo "PACKER_LOG_PATH=${PACKER_LOG_PATH}"
 
@@ -65,21 +89,23 @@ then
   rm -rf "$root_path/virtual-environments"
 fi
 
-git clone -b "$VE_RELEASE" --single-branch https://github.com/actions/virtual-environments.git "$root_path/virtual-environments"
+# split release into an array
+# readarray -d "/" -t version_array <<< "$VE_RELEASE"
+IFS='/' read -ra version_array <<< "$VE_RELEASE"
 
-# run PowerShell wrapper script to create packer image
-pwsh -File "$script_path/create-ve-image.ps1" -NonInteractive
+if [[ "${version_array[1]}" == "latest" ]]
+then
+  git clone "$VE_REPO" "$root_path/virtual-environments"
+  readarray -t tags <<< "$(git -C "$root_path/virtual-environments" tag --list --sort=-committerdate "${version_array[0]}/*")"
+  declare -p tags
+  latest_tag="${tags[0]}"
+  git -C "$root_path/virtual-environments" checkout "$latest_tag"
+  VE_RELEASE="$latest_tag"
+else
+  git clone -b "$VE_RELEASE" --single-branch "$VE_REPO" "$root_path/virtual-environments"
+fi
 
-# get required outputs from packer log file
-ostype=$(grep -Po '^OSType:\s\K([a-zA-Z]+)$' "$PACKER_LOG_PATH")
-osdiskuri=$(grep -Po '^OSDiskUri:\s\K(.+)$' "$PACKER_LOG_PATH")
-storageaccount=$(echo "$osdiskuri" | grep -Po '^https://\K([a-zA-Z0-9]+)')
-
-printf "ostype: %s\n" "$ostype"
-printf "osdiskuri: %s\n" "$osdiskuri"
-printf "storageaccount: %s\n" "$storageaccount"
-
-readarray -d "/" -t version_array <<< "$VE_RELEASE"
+printf "Using release tag: %s\n" "$VE_RELEASE"
 
 echo "Logging into Azure..."
 az login --service-principal -u "$ARM_CLIENT_ID" -p "$ARM_CLIENT_SECRET" --tenant "$ARM_TENANT_ID"
@@ -115,6 +141,35 @@ img_versions_json=$(az sig image-version list \
 
 # read image version names into array
 readarray -t img_versions <<< "$(echo "$img_versions_json" | jq -r .[].name)"
+
+# check existing tagged versions
+readarray -t source_tags <<< $(echo "$img_versions_json" | jq -r '.[].tags[]')
+declare -p source_tags
+
+if array_contains source_tags "$VE_RELEASE"
+then
+  printf "Tagged release definition already exists in Azure Compute Gallery: %s\n" "$VE_RELEASE"
+  printf "Not attempting to create new version\n"
+  # update to non-zero if you want this to generate an error
+  exit 0
+else
+  # patch PowerShell script to remove interactive cleanup
+  # https://www.packer.io/docs/commands/build#on-error-cleanup
+  sed -i 's/-on-error=ask//' "$root_path/virtual-environments/helpers/GenerateResourcesAndImage.ps1"
+  # run PowerShell wrapper script to create packer image
+  pwsh -File "$script_path/create-ve-image.ps1" -NonInteractive
+  #TODO: remove line below
+  cat "$root_path/virtual-environments/helpers/GenerateResourcesAndImage.ps1"
+fi
+
+# get required outputs from packer log file
+ostype=$(grep -Po '^OSType:\s\K([a-zA-Z]+)$' "$PACKER_LOG_PATH")
+osdiskuri=$(grep -Po '^OSDiskUri:\s\K(.+)$' "$PACKER_LOG_PATH")
+storageaccount=$(echo "$osdiskuri" | grep -Po '^https://\K([a-zA-Z0-9]+)')
+
+printf "ostype: %s\n" "$ostype"
+printf "osdiskuri: %s\n" "$osdiskuri"
+printf "storageaccount: %s\n" "$storageaccount"
 
 echo "Creating Azure Compute Gallery Image Definition $AZ_ACG_NAME"
 az sig image-definition create \

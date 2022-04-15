@@ -1,0 +1,33 @@
+---
+
+name: "ubuntu20"
+
+trigger: none
+
+variables:
+  containerImage: "ghcr.io/tonyskidmore/azure-tools:latest"
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+resources:
+  containers:
+  - container: azure-tools
+    image: '${{ variables.containerImage }}'
+    options: --user 0:0 --name rover-container"
+
+
+jobs:
+- job: imagebuild
+  displayName: "Image Build"
+  continueOnError: false
+
+  container: azure-tools
+
+  steps:
+
+    - checkout: self
+
+    - script: |
+        env"
+      displayName: "debug"
