@@ -71,15 +71,21 @@ jobs:
           echo "##vso[task.setvariable variable=ARM_CLIENT_ID;]$client_id"
           echo "##vso[task.setvariable variable=ARM_CLIENT_SECRET;]$client_secret"
 
-        displayName: 'set azure environment variables from service connection'
+      displayName: 'Set azure environment variables from service connection'
 
     - script: |
         echo "ARM_SUBSCRIPTION_ID: $ARM_SUBSCRIPTION_ID"
         echo "ARM_TENANT_ID: $ARM_TENANT_ID"
         echo "ARM_CLIENT_ID: $ARM_CLIENT_ID"
         echo "ARM_CLIENT_SECRET: $ARM_CLIENT_SECRET"
-      displayName: 'check env'
+      displayName: 'Check env'
 
     - script: |
         env
+        ls "$SYSTEM_DEFAULTWORKINGDIRECTORY"
       displayName: "Debug"
+
+    - task: Bash@3
+      inputs:
+        filePath: 'scripts/create-ve-image.sh'
+      displayName: "Run create image script"
