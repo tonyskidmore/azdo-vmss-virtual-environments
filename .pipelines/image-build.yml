@@ -2,6 +2,14 @@
 
 name: "ubuntu20"
 
+parameters:
+  - name: azureSubscription
+    type: string
+    default: ''
+  - name: backendServiceArm
+    type: string
+    default: 'vmss'
+
 trigger: none
 
 variables:
@@ -9,6 +17,16 @@ variables:
 
 pool:
   vmImage: 'ubuntu-latest'
+
+schedules:
+  # https://crontab.guru
+  # Note: UTC time
+  - cron: "30 1 * * *"
+    always: true
+    displayName: Daily build
+    branches:
+      include:
+        - main
 
 resources:
   containers:
@@ -28,6 +46,42 @@ jobs:
   steps:
 
     - checkout: self
+
+    - task: AzureCLI@2
+      displayName: 'set azure environment variables from service connection'
+      inputs:
+        scriptType: bash
+        scriptLocation: inlineScript
+        addSpnToEnvironment: true
+        azureSubscription: '${{ parameters.backendServiceArm }}'
+        inlineScript: |
+          set -e
+
+          az_subscription=${{ parameters.azureSubscription }}
+
+          if [[ -n "$az_subscription" ]]
+          then
+            printf "azureSubscription: %s\n" "$az_subscription"
+            subscription_id="$az_subscription"
+          else
+            subscription_id=$(az account show --query 'id' --output tsv)
+          fi
+
+          tenant_id=$(az account show --query 'tenantId' --output tsv)
+          client_id=${servicePrincipalId:-}
+          client_secret=${servicePrincipalKey:-}
+          echo "##vso[task.setvariable variable=ARM_SUBSCRIPTION_ID;]$subscription_id"
+          echo "##vso[task.setvariable variable=ARM_TENANT_ID;]$tenant_id"
+          echo "##vso[task.setvariable variable=ARM_CLIENT_ID;]$client_id"
+          echo "##vso[task.setvariable variable=ARM_CLIENT_SECRET;]$client_secret"
+      condition: gt(length('${{ parameters.backendServiceArm }}'), 0)
+
+    - script: |
+        echo "ARM_SUBSCRIPTION_ID: $ARM_SUBSCRIPTION_ID"
+        echo "ARM_TENANT_ID: $ARM_TENANT_ID"
+        echo "ARM_CLIENT_ID: $ARM_CLIENT_ID"
+        echo "ARM_CLIENT_SECRET: $ARM_CLIENT_SECRET"
+      displayName: 'check env'
 
     - script: |
         env
