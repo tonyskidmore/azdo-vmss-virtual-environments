@@ -158,8 +158,6 @@ else
   sed -i 's/-on-error=ask//' "$root_path/virtual-environments/helpers/GenerateResourcesAndImage.ps1"
   # run PowerShell wrapper script to create packer image
   pwsh -File "$script_path/create-ve-image.ps1" -NonInteractive
-  #TODO: remove line below
-  cat "$root_path/virtual-environments/helpers/GenerateResourcesAndImage.ps1"
 fi
 
 # get required outputs from packer log file

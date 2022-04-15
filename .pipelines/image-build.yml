@@ -21,6 +21,8 @@ jobs:
 - job: imagebuild
   displayName: "Image Build"
   continueOnError: false
+  # https://docs.microsoft.com/en-us/azure/devops/pipelines/process/phases?view=azure-devops&tabs=yaml#timeouts
+  timeoutInMinutes: 240
 
   container: azure-tools
 
