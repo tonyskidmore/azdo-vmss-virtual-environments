@@ -95,6 +95,16 @@ az sig create \
   --resource-group "$AZ_ACG_RESOURCE_GROUP_NAME" \
   --gallery-name "$AZ_ACG_NAME"
 
+echo "Getting current Azure Compute Gallery Image Version versions"
+# using jq output due to issues with creating bash array with --output tsv
+readarray -t img_versions <<< "$(az sig image-version list \
+  --gallery-image-definition "${version_array[0]}" \
+  --gallery-name "$AZ_ACG_NAME" \
+  --resource-group "$AZ_ACG_RESOURCE_GROUP_NAME" \
+  --output json \
+  --query '[].name' \
+  | jq -r .[])"
+
 echo "Creating Azure Compute Gallery Image Definition $AZ_ACG_NAME"
 az sig image-definition create \
    --resource-group "$AZ_ACG_RESOURCE_GROUP_NAME" \
@@ -105,16 +115,6 @@ az sig image-definition create \
    --sku "$VE_IMAGE_SKU" \
    --os-type "$ostype" \
    --os-state generalized
-
-echo "Getting current Azure Compute Gallery Image Version versions"
-# using jq output due to issues with creating bash array with --output tsv
-readarray -t img_versions <<< "$(az sig image-version list \
-  --gallery-image-definition "${version_array[0]}" \
-  --gallery-name "$AZ_ACG_NAME" \
-  --resource-group "$AZ_ACG_RESOURCE_GROUP_NAME" \
-  --output json \
-  --query '[].name' \
-  | jq -r .[])"
 
 echo "Found ${#img_versions[*]} current version definitions"
 echo "Current versions:"
