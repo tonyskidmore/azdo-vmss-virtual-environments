@@ -3,9 +3,6 @@
 name: "ubuntu20"
 
 parameters:
-  # - name: azureSubscription
-  #   type: string
-  #   default: ''
   - name: backendServiceArm
     type: string
     default: 'vmss'
@@ -48,7 +45,6 @@ jobs:
     - checkout: self
 
     - task: AzureCLI@2
-      displayName: 'set azure environment variables from service connection'
       inputs:
         scriptType: bash
         scriptLocation: inlineScript
@@ -57,7 +53,6 @@ jobs:
         inlineScript: |
           set -e
 
-          # az_subscription=${{ parameters.azureSubscription }}
           az_subscription=""
 
           if [[ -n "$az_subscription" ]]
@@ -75,7 +70,8 @@ jobs:
           echo "##vso[task.setvariable variable=ARM_TENANT_ID;]$tenant_id"
           echo "##vso[task.setvariable variable=ARM_CLIENT_ID;]$client_id"
           echo "##vso[task.setvariable variable=ARM_CLIENT_SECRET;]$client_secret"
-      # condition: gt(length('${{ parameters.backendServiceArm }}'), 0)
+
+        displayName: 'set azure environment variables from service connection'
 
     - script: |
         echo "ARM_SUBSCRIPTION_ID: $ARM_SUBSCRIPTION_ID"
