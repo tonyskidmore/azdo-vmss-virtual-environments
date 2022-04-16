@@ -94,16 +94,6 @@ az sig create \
   --resource-group "$AZ_ACG_RESOURCE_GROUP_NAME" \
   --gallery-name "$AZ_ACG_NAME"
 
-# echo "Getting current Azure Compute Gallery Image Version versions"
-# # using jq output due to issues with creating bash array with --output tsv
-# readarray -t img_versions <<< "$(az sig image-version list \
-#   --gallery-image-definition "${version_array[0]}" \
-#   --gallery-name "$AZ_ACG_NAME" \
-#   --resource-group "$AZ_ACG_RESOURCE_GROUP_NAME" \
-#   --output json \
-#   --query '[].name' \
-#   | jq -r .[])"
-
 # get JSON output of existing image versions
 echo "Getting current Azure Compute Gallery Image Version versions"
 img_versions_json=$(az sig image-version list \
@@ -130,13 +120,22 @@ else
   # https://www.packer.io/docs/commands/build#on-error-cleanup
   sed -i 's/-on-error=ask//' "$root_path/virtual-environments/helpers/GenerateResourcesAndImage.ps1"
   # run PowerShell wrapper script to create packer image
-  pwsh -File "$script_path/create-ve-image.ps1" -NonInteractive
+  pwsh -File "$script_path/ve-image-create.ps1" -NonInteractive
 fi
 
 # get required outputs from packer log file
 ostype=$(grep -Po '^OSType:\s\K([a-zA-Z]+)$' "$PACKER_LOG_PATH")
 osdiskuri=$(grep -Po '^OSDiskUri:\s\K(.+)$' "$PACKER_LOG_PATH")
 storageaccount=$(echo "$osdiskuri" | grep -Po '^https://\K([a-zA-Z0-9]+)')
+
+if [[ -z $ostype || -z $osdiskuri || -z $storageaccount ]]
+then
+  echo "Failed to get required values from packer log file"
+  printf "ostype: %s\n" "$ostype"
+  printf "osdiskuri: %s\n" "$osdiskuri"
+  printf "storageaccount: %s\n" "$storageaccount"
+  exit 1
+fi
 
 printf "ostype: %s\n" "$ostype"
 printf "osdiskuri: %s\n" "$osdiskuri"

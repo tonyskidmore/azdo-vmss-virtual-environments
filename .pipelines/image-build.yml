@@ -87,5 +87,5 @@ jobs:
 
     - task: Bash@3
       inputs:
-        filePath: 'scripts/create-ve-image.sh'
+        filePath: 'scripts/ve-image-create.sh'
       displayName: "Run create image script"
