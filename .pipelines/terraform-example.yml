@@ -16,14 +16,14 @@ trigger: none
 
 stages:
 
-- stage: 'plan'
+- stage: 'init_plan'
   pool:
     name: ${{ parameters.poolName }}
   displayName: "Terraform Init & Plan"
 
   jobs:
 
-  - job: plan
+  - job: init_plan
     workspace:
       clean: all
 
@@ -57,3 +57,16 @@ stages:
         displayName: 'terraform plan'
         env:
           ARM_USE_MSI: "true"
+
+  - job: waitForValidation
+    displayName: 'Review and approve terraform plan before approving'
+    pool: server
+    timeoutInMinutes: 60
+    steps:
+    - task: ManualValidation@0
+      timeoutInMinutes: 30
+      inputs:
+        notifyUsers: |
+          example@example.com
+        instructions: 'Please validate the terraform plan before continuing'
+        onTimeout: 'reject'
