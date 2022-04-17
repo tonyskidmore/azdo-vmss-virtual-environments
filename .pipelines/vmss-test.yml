@@ -86,6 +86,10 @@ stages:
           printenv
         displayName: 'debug environment'
 
+      - script: |
+          curl -H Metadata:true "http://169.254.169.254/metadata/instance" | jq
+        displayName: 'get metadata'
+
       - ${{ if gt(parameters.wait, 0) }}:
         - script: |
             sleep "${{ parameters.wait }}"
