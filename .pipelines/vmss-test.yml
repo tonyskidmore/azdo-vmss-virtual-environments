@@ -35,6 +35,9 @@ stages:
 
     steps:
 
+      - script: date
+        displayName: 'start time'
+
       - script: echo "$AGENT_MACHINENAME"
         displayName: 'AGENT_MACHINENAME'
 
@@ -95,3 +98,6 @@ stages:
         - script: |
             sleep "${{ parameters.wait }}"
           displayName: "Wait"
+
+      - script: date
+        displayName: 'end time'

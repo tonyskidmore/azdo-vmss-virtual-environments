@@ -6,7 +6,7 @@ parameters:
     default: 'vmss'
 
 variables:
-  - workingDirectory: $(System.DefaultWorkingDirectory)/terraform/example
+  workingDirectory: $(System.DefaultWorkingDirectory)/terraform/example
 
 trigger: none
 
