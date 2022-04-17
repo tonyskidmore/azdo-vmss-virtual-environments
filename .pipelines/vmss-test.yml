@@ -1,13 +1,13 @@
 # Pipeline for testing Azure VMSS self-hosted agents
 
 parameters:
-  - name: pool
-    type: string
-    default: 'vmss'
+
   - name: wait
     type: number
     default: 0
 
+variables:
+  pool: 'vmss'
 
 trigger: none
 
@@ -20,7 +20,7 @@ schedules:
   always: true
 
 pool:
-  name: "${{ parameters.pool }}"
+  name: "${{ variables.pool }}"
 
 
 steps:
