@@ -5,6 +5,9 @@ parameters:
   - name: wait
     type: number
     default: 0
+  - name: poolName
+    type: string
+    default: 'vmss'
 
 
 trigger: none
@@ -17,62 +20,73 @@ schedules:
     - main
   always: true
 
-pool:
-  name: vmss
+stages:
 
-steps:
+- stage: 'Validate'
+  pool:
+    name: ${{ parameters.poolName }}
+  displayName: "Validate Azure DevOps Agent"
 
-- script: echo "$AGENT_MACHINENAME"
-  displayName: 'AGENT_MACHINENAME'
+  jobs:
 
-- script: docker run hello-world
-  displayName: 'Test docker container'
+  - job: test
+    workspace:
+      clean: all
 
-- script: |
-    set -x
-    npm --version
-    php -m
-  displayName: 'Run some version checks'
+    steps:
 
-- script: |
-    terraform version
-  displayName: 'terraform version'
+      - script: echo "$AGENT_MACHINENAME"
+        displayName: 'AGENT_MACHINENAME'
 
-- script: |
-    packer version
-  displayName: 'packer version'
+      - script: docker run hello-world
+        displayName: 'Test docker container'
 
-- script: |
-    echo "See: https://github.com/microsoft/azure-pipelines-agent/issues/3461"
-    echo $PATH
-    echo $PATH | grep "/opt/pipx_bin"
-  displayName: 'issue 3461 test'
+      - script: |
+          set -x
+          npm --version
+          php -m
+        displayName: 'Run some version checks'
 
-- script: |
-    ansible --version
-  displayName: 'ansible --version'
+      - script: |
+          terraform version
+        displayName: 'terraform version'
 
-- script: |
-    pwsh --version
-  displayName: 'pwsh --version'
+      - script: |
+          packer version
+        displayName: 'packer version'
 
-- script: |
-    az version
-  displayName: 'az version'
+      - script: |
+          echo "See: https://github.com/microsoft/azure-pipelines-agent/issues/3461"
+          echo $PATH
+          echo "validate that /opt/pipx_bin exists in $PATH"
+          echo $PATH | grep -o "/opt/pipx_bin"
+        displayName: 'issue 3461 test'
 
-- script: |
-    whoami
-  displayName: 'whoami'
+      - script: |
+          ansible --version
+        displayName: 'ansible --version'
 
-- script: |
-    sudo whoami
-  displayName: 'whoami now'
+      - script: |
+          pwsh --version
+        displayName: 'pwsh --version'
 
-- script: |
-    printenv
-  displayName: 'debug environment'
+      - script: |
+          az version
+        displayName: 'az version'
 
-- ${{ if gt(parameters.wait, 0) }}:
-  - script: |
-      sleep "${{ parameters.wait }}"
-    displayName: "Wait"
+      - script: |
+          whoami
+        displayName: 'whoami'
+
+      - script: |
+          sudo whoami
+        displayName: 'whoami now'
+
+      - script: |
+          printenv
+        displayName: 'debug environment'
+
+      - ${{ if gt(parameters.wait, 0) }}:
+        - script: |
+            sleep "${{ parameters.wait }}"
+          displayName: "Wait"
