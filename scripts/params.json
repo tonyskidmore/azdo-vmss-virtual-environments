@@ -7,7 +7,7 @@
   "maxSavedNodeCount": 0,
   "offlineSince": "",
   "osType": "linux",
-  "recycleAfterEachUse": true,
+  "recycleAfterEachUse": false,
   "serviceEndpointId": "360581cb-8176-4dab-ac64-318ea40a0bb7",
   "serviceEndpointScope": "74699cfc-c147-4291-b944-90964b5dfba0",
   "sizingAttempts": 0,

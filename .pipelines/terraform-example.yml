@@ -1,0 +1,42 @@
+# Pipeline for simple Terraform testing Azure VMSS self-hosted agents
+
+parameters:
+  - name: poolName
+    type: string
+    default: 'vmss'
+
+variables:
+  - workingDirectory: $(System.DefaultWorkingDirectory)/terraform/example
+
+trigger: none
+
+stages:
+
+- stage: 'plan'
+  pool:
+    name: ${{ parameters.poolName }}
+  displayName: "Terraform Init & Plan"
+
+  jobs:
+
+  - job: plan
+    workspace:
+      clean: all
+
+    steps:
+
+      - task: Cache@2
+        displayName: 'register init cache'
+        inputs:
+          key: 'terraform | init | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
+          path: '${{ variables.workingDirectory }}'
+
+      - script: |
+          printf "terraform init\n"
+          TF_IN_AUTOMATION=true terraform init"
+
+        workingDirectory: '${{ variables.workingDirectory }}'
+        displayName: 'terraform init'
+        env:
+          ARM_USE_MSI: "true"
+
