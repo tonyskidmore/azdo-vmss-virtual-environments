@@ -73,8 +73,10 @@ stages:
         onTimeout: 'reject'
 
   - job: apply
-    workspace:
-      clean: all
+    displayName: 'Review and approve terraform plan before approving'
+    pool: server
+    timeoutInMinutes: 60
+    dependsOn: waitForValidation
 
     steps:
 
