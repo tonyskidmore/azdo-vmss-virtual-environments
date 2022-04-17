@@ -1,4 +1,5 @@
 # Pipeline for simple Terraform testing Azure VMSS self-hosted agents
+# to keep things simple we will not be using remote state
 
 parameters:
 
@@ -88,7 +89,6 @@ stages:
       name: ${{ parameters.poolName }}
     displayName: 'Terraform Apply'
     timeoutInMinutes: 60
-    dependsOn: waitForValidation
 
     steps:
 
