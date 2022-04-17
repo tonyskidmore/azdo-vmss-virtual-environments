@@ -30,9 +30,9 @@ stages:
     steps:
 
       - task: Cache@2
-        displayName: 'register init cache'
+        displayName: 'register plan cache'
         inputs:
-          key: 'terraform | init | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
+          key: 'terraform | plan | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
           path: '${{ variables.workingDirectory }}'
 
       - script: |
@@ -62,6 +62,7 @@ stages:
     displayName: 'Review and approve terraform plan before approving'
     pool: server
     timeoutInMinutes: 60
+    dependsOn: init_plan
     steps:
     - task: ManualValidation@0
       timeoutInMinutes: 30
@@ -70,3 +71,22 @@ stages:
           example@example.com
         instructions: 'Please validate the terraform plan before continuing'
         onTimeout: 'reject'
+
+  - job: apply
+    workspace:
+      clean: all
+
+    steps:
+
+      - task: Cache@2
+        displayName: 'get plan cache'
+        inputs:
+          key: 'terraform | plan | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
+
+      - script: |
+          printf "terraform apply tfplan\n"
+          TF_IN_AUTOMATION=true terraform apply tfplan
+        workingDirectory: '${{ variables.workingDirectory }}'
+        displayName: 'terraform apply'
+        env:
+          ARM_USE_MSI: "true"
