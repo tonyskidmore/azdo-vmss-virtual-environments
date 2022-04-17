@@ -58,11 +58,15 @@ stages:
         env:
           ARM_USE_MSI: "true"
 
+- stage: 'validate_plan'
+  pool: server
+  displayName: "Validate Plan"
+
+  jobs:
   - job: waitForValidation
     displayName: 'Review and approve terraform plan before approving'
-    pool: server
     timeoutInMinutes: 60
-    dependsOn: init_plan
+
     steps:
     - task: ManualValidation@0
       timeoutInMinutes: 30
@@ -72,10 +76,17 @@ stages:
         instructions: 'Please validate the terraform plan before continuing'
         onTimeout: 'reject'
 
+- stage: 'apply'
+  pool:
+    name: ${{ parameters.poolName }}
+  displayName: "Terraform Apply"
+
+  jobs:
+
   - job: apply
     pool:
       name: ${{ parameters.poolName }}
-    displayName: 'Review and approve terraform plan before approving'
+    displayName: 'Terraform Apply'
     timeoutInMinutes: 60
     dependsOn: waitForValidation
 
