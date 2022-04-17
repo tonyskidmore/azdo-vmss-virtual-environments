@@ -87,7 +87,8 @@ stages:
         displayName: 'debug environment'
 
       - script: |
-          curl -H Metadata:true "http://169.254.169.254/metadata/instance?api-version=2021-02-01" | jq
+          # https://docs.microsoft.com/en-us/azure/virtual-machines/linux/instance-metadata-service?tabs=linux
+          curl -H Metadata:true "http://169.254.169.254/metadata/instance?api-version=2021-12-13" | jq
         displayName: 'get metadata'
 
       - ${{ if gt(parameters.wait, 0) }}:
