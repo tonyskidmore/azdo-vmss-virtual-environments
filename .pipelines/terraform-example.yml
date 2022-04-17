@@ -1,10 +1,5 @@
 # Pipeline for simple Terraform testing Azure VMSS self-hosted agents
 
-parameters:
-  - name: poolName
-    type: string
-    default: 'vmss'
-
 variables:
   workingDirectory: $(System.DefaultWorkingDirectory)/terraform/example
 
