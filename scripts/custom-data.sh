@@ -80,12 +80,12 @@ echo "$pathFromEnv" > /agent/.path
 # echo "pgrep Agent.Listener: $(pgrep -f 'Agent.Listener')"
 
 # finally restart the Azure DevOps agent after the path updates
-# echo "running: sudo -E runuser AzDevOps -c '/bin/sh /agent/run.sh"
-# echo "sudo -E runuser AzDevOps -c '/bin/bash /agent/run.sh'" | at now
+echo "running: sudo -E runuser AzDevOps -c '/bin/sh /agent/run.sh"
+echo "sudo -E runuser AzDevOps -c '/bin/bash /agent/run.sh'" | at now
 
 # https://github.com/simonasaitta/agent-pool-scripts/blob/main/enableagent.sh
-echo "running: sudo -E runuser AzDevOps -c '/bin/sh /agent/run.sh"
-sudo -E nice -n 0 runuser AzDevOps -c "/bin/bash /agent/run.sh" > /dev/null 2>&1 &
-disown
+# echo "running: sudo -E runuser AzDevOps -c '/bin/sh /agent/run.sh"
+# sudo -E nice -n 0 runuser AzDevOps -c "/bin/bash /agent/run.sh" > /dev/null 2>&1 &
+# disown
 
-timeout 15m bash -c 'until pidof Agent.Listener; do echo "Waiting for Agent.Listener" && sleep 5; done'
+# timeout 15m bash -c 'until pidof Agent.Listener; do echo "Waiting for Agent.Listener" && sleep 5; done'

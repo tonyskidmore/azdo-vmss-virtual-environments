@@ -34,15 +34,16 @@ stages:
 
       - script: |
           printf "terraform init\n"
-          TF_IN_AUTOMATION=true terraform init
+          TF_IN_AUTOMATION=true terraform init -backend=false
+        workingDirectory: '${{ variables.workingDirectory }}'
         displayName: 'terraform init'
+        env:
+          ARM_USE_MSI: "true"
 
       - script: |
           printf "terraform plan -out tfplan\n"
           TF_IN_AUTOMATION=true terraform plan -out tfplan
-
         workingDirectory: '${{ variables.workingDirectory }}'
         displayName: 'terraform plan'
         env:
           ARM_USE_MSI: "true"
-
