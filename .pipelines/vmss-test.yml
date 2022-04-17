@@ -6,8 +6,6 @@ parameters:
     type: number
     default: 0
 
-variables:
-  pool: 'vmss'
 
 trigger: none
 
@@ -20,8 +18,7 @@ schedules:
   always: true
 
 pool:
-  name: "${{ variables.pool }}"
-
+  name: vmss
 
 steps:
 
