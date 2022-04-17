@@ -19,10 +19,10 @@ echo "root_path: $root_path"
 
 # end functions
 
-export AZ_NET_RESOURCE_GROUP_NAME="${AZ_NET_RESOURCE_GROUP_NAME:-rg-networks-01}"
-export AZ_NET_NAME="${AZ_NET_NAME:-vnet-network-01}"
+export AZ_NET_RESOURCE_GROUP_NAME="${AZ_NET_RESOURCE_GROUP_NAME:-rg-azdo-agents-networks-01}"
+export AZ_NET_NAME="${AZ_NET_NAME:-vnet-azdo-agents-01}"
 export AZ_NET_ADR_PREFIXES="${AZ_NET_ADR_PREFIXES:-172.16.0.0/12}"
-export AZ_SUBNET_NAME="${AZ_SUBNET_NAME:-sub-azdo-agents-01}"
+export AZ_SUBNET_NAME="${AZ_SUBNET_NAME:-snet-azdo-agents-01}"
 export AZ_SUBNET_ADR_PREFIXES="${AZ_SUBNET_ADR_PREFIXES:-172.16.0.0/24}"
 export AZ_LOCATION="${AZ_LOCATION:-uksouth}"
 
@@ -45,21 +45,19 @@ az group create \
   --name "$AZ_NET_RESOURCE_GROUP_NAME" \
   --location "$AZ_LOCATION"
 
-
-# https://docs.microsoft.com/en-us/cli/azure/network/vnet?view=azure-cli-latest#az-network-vnet-create
-
 vnet_query=("network" "vnet" "list" \
-            "--query" "[?name == '$AZ_NET_NAME'] | length(@)")
+            "--resource-group" "$AZ_NET_RESOURCE_GROUP_NAME" \
+            "--output" "json")
 
 printf "Running: az %s\n" "${vnet_query[*]}"
-vnet_result=$(az "${vnet_query[@]}")
-exit_code=$?
-printf "vnet query exit code: %s\n" "$exit_code"
-printf "Number of vnets matching name $AZ_NET_NAME: %s\n" "$vnet_result"
+vnet_result="$(az "${vnet_query[@]}")"
+vnet_query_name=$(echo "$vnet_result" | jq -r '.[].name')
+printf "vnet query found: %s\n" "$vnet_query_name"
 
-if [[ "$vnet_result" == "0" ]]
+if [[ "$vnet_query_name" != "$AZ_NET_NAME" ]]
 then
   echo "Creating network: $AZ_NET_NAME"
+  # https://docs.microsoft.com/en-us/cli/azure/network/vnet?view=azure-cli-latest#az-network-vnet-create
   az network vnet create \
     --resource-group "$AZ_NET_RESOURCE_GROUP_NAME" \
     --name "$AZ_NET_NAME" \
@@ -69,17 +67,17 @@ else
 fi
 
 subnet_query=("network" "vnet" "subnet" "list" \
-              "--query" "[?name == '$AZ_SUBNET_NAME'] | length(@)" \
               "--vnet-name" "$AZ_NET_NAME" \
-              "--resource-group" "$AZ_NET_RESOURCE_GROUP_NAME")
+              "--resource-group" "$AZ_NET_RESOURCE_GROUP_NAME" \
+              "--output" "json")
 
 printf "Running: az %s\n" "${subnet_query[*]}"
-subnet_result=$(az "${subnet_query[@]}")
-exit_code=$?
-printf "subnet query exit code: %s\n" "$exit_code"
-printf "Number of subnets matching name $AZ_SUBNET_NAME: %s\n" "$subnet_result"
+subnet_result="$(az "${subnet_query[@]}")"
+subnet_query_name=$(echo "$subnet_result" | jq -r '.[].name')
+printf "subnet query found: %s\n" "$subnet_query_name"
 
-if [[ "$subnet_result" == "0" ]]
+
+if [[ "$subnet_query_name" != "$AZ_SUBNET_NAME" ]]
 then
   # https://docs.microsoft.com/en-us/cli/azure/network/vnet/subnet?view=azure-cli-latest#az-network-vnet-subnet-create
   echo "Creating subnet $AZ_SUBNET_NAME"
@@ -91,3 +89,5 @@ then
 else
   echo "Subnet already exists: $AZ_SUBNET_NAME"
 fi
+
+

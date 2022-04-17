@@ -1,0 +1,81 @@
+# Pipeline for testing Azure VMSS self-hosted agents
+
+parameters:
+  - name: pool
+    type: string
+    default: 'vmss'
+  - name: wait
+    type: number
+    default: 0
+
+
+trigger: none
+
+schedules:
+- cron: "0 * * * *"
+  displayName: "test schedule"
+  branches:
+    include:
+    - main
+  always: true
+
+pool:
+  name: "${{ parameters.pool }}"
+
+
+steps:
+
+- script: echo "$AGENT_MACHINENAME"
+  displayName: 'AGENT_MACHINENAME'
+
+- script: docker run hello-world
+  displayName: 'Test docker container'
+
+- script: |
+    set -x
+    npm --version
+    php -m
+  displayName: 'Run some version checks'
+
+- script: |
+    terraform version
+  displayName: 'terraform version'
+
+- script: |
+    packer version
+  displayName: 'packer version'
+
+- script: |
+    echo "See: https://github.com/microsoft/azure-pipelines-agent/issues/3461"
+    echo $PATH
+    echo $PATH | grep "/opt/pipx_bin"
+  displayName: 'issue 3461 test'
+
+- script: |
+    ansible --version
+  displayName: 'ansible --version'
+
+- script: |
+    pwsh --version
+  displayName: 'pwsh --version'
+
+- script: |
+    az version
+  displayName: 'az version'
+
+- script: |
+    whoami
+  displayName: 'whoami'
+
+- script: |
+    sudo whoami
+  displayName: 'whoami now'
+
+- script: |
+    printenv
+  displayName: 'debug environment'
+
+- ${{ if gt(parameters.wait, 0) }}:
+  - script: |
+      sleep "${{ parameters.wait }}"
+    displayName: "Wait"

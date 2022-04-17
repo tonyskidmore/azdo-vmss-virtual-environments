@@ -1,5 +1,15 @@
 #!/bin/bash
 
+set -e
+
+# define variables
+script_path=$(dirname "$(realpath "$0")")
+export script_path
+echo "script_path: $script_path"
+root_path=$(dirname "$script_path")
+export root_path
+echo "root_path: $root_path"
+
 # export ADO_TOKEN=
 # export ADO_ORG=
 # export ADO_PROJECT=
@@ -47,6 +57,7 @@ auto_provision_project_pools="False"
 
 # GET https://dev.azure.com/{organization}/{project}/_apis/serviceendpoint/endpoints?api-version=6.0-preview.4
 
+# https://docs.microsoft.com/en-us/rest/api/azure/devops/distributedtask/elasticpools/create?view=azure-devops-rest-7.1
 # POST https://dev.azure.com/{organization}/_apis/distributedtask/elasticpools?poolName={poolName}&authorizeAllPipelines={authorizeAllPipelines}&autoProvisionProjectPools={autoProvisionProjectPools}&projectId={projectId}&api-version=7.1-preview.1
 url="https://dev.azure.com/$ADO_ORG/_apis/distributedtask/elasticpools?poolName=$pool_name&authorizeAllPipelines=$authorize_all_pipelines&autoProvisionProjectPools=$auto_provision_project_pools&projectId=$project_id&api-version=7.1-preview.1"
 
@@ -54,6 +65,8 @@ echo "$url"
 # json_data='{}'
 
 # new_pool=$(curl -s -X POST -H "Content-Type: application/json" -d "$json_data" -u ":$ADO_TOKEN" "$url" )
+
+cd "$script_path"
 
 # uncommment when service endpoint is available
 echo "$PWD"

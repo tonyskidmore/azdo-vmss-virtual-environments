@@ -106,7 +106,7 @@ img_versions_json=$(az sig image-version list \
 readarray -t img_versions <<< "$(echo "$img_versions_json" | jq -r .[].name)"
 
 # check existing tagged versions
-readarray -t source_tags <<< $(echo "$img_versions_json" | jq -r '.[].tags[]')
+readarray -t source_tags <<< "$(echo "$img_versions_json" | jq -r '.[].tags[]')"
 declare -p source_tags
 
 if array_contains source_tags "$VE_RELEASE"

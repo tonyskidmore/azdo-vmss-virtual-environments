@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# https://github.com/microsoft/azure-pipelines-agent/issues/3546
+
 echo "running as: $(whoami)"
 echo "running shell: $(readlink /proc/$$/exe)"
 
@@ -8,8 +10,18 @@ echo "running shell: $(readlink /proc/$$/exe)"
 find /opt/post-generation -mindepth 1 -maxdepth 1 -type f -name "*.sh" -exec bash {} \;
 
 # wait for the Azure DevOps agent Agent.Listener process to start
-timeout 15m bash -c 'until pidof Agent.Listener; do echo "Waiting for Agent.Listener" && sleep 10; done'
-sleep 10
+timeout 15m bash -c 'until pidof Agent.Listener; do echo "Waiting for Agent.Listener" && sleep 5; done'
+
+if pidof Agent.Listener > /dev/null
+then
+  agent_pid=$(pidof Agent.Listener)
+  printf "killing Agent.Listener process: %s\n" "$agent_pid"
+  kill "$agent_pid"
+else
+  echo "Agent.Listener process not found"
+fi
+
+sleep 5
 
 # get path information from /etc/environment
 pathFromEnv=$(cut -d= -f2 /etc/environment | tail -1)
@@ -64,18 +76,14 @@ echo "$pathFromEnv" > /agent/.path
 
 # agent_pid=$(pidof Agent.Listener) && kill --verbose "$agent_pid" || echo "Agent.Listener process not found"
 
-if pidof Agent.Listener > /dev/null
-then
-  agent_pid=$(pidof Agent.Listener)
-  printf "killing Agent.Listener process: %s\n" "$agent_pid"
-  kill "$agent_pid"
-else
-  echo "Agent.Listener process not found"
-fi
-
-echo "pgrep run.sh: $(pgrep -f 'run.sh')"
-echo "pgrep Agent.Listener: $(pgrep -f 'Agent.Listener')"
+# echo "pgrep run.sh: $(pgrep -f 'run.sh')"
+# echo "pgrep Agent.Listener: $(pgrep -f 'Agent.Listener')"
 
 # finally restart the Azure DevOps agent after the path updates
 echo "running: sudo -E runuser AzDevOps -c '/bin/sh /agent/run.sh"
 echo "sudo -E runuser AzDevOps -c '/bin/bash /agent/run.sh'" | at now
+
+# https://github.com/simonasaitta/agent-pool-scripts/blob/main/enableagent.sh
+# log_message "Starting agent"
+# sudo -E nice -n 0 runuser AzDevOps -c "/bin/bash $dir/run.sh $runArgs" > /dev/null 2>&1 &
+# disown
