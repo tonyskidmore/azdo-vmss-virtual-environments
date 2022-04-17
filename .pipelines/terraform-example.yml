@@ -7,7 +7,10 @@ parameters:
     default: 'vmss'
 
 variables:
-  workingDirectory: $(System.DefaultWorkingDirectory)/terraform/example
+  - group: azure
+  - name: workingDirectory
+    value: $(System.DefaultWorkingDirectory)/terraform/example
+
 
 trigger: none
 
@@ -31,6 +34,13 @@ stages:
         inputs:
           key: 'terraform | init | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
           path: '${{ variables.workingDirectory }}'
+
+      - script: |
+          env
+        workingDirectory: '${{ variables.workingDirectory }}'
+        displayName: 'env'
+        env:
+          ARM_USE_MSI: "true"
 
       - script: |
           printf "terraform init\n"
