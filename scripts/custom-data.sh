@@ -10,15 +10,15 @@ echo "running shell: $(readlink /proc/$$/exe)"
 find /opt/post-generation -mindepth 1 -maxdepth 1 -type f -name "*.sh" -exec bash {} \;
 
 # wait for the Azure DevOps agent Agent.Listener process to start
-timeout 15m bash -c 'until pidof Agent.Listener; do echo "Waiting for Agent.Listener" && sleep 5; done'
+timeout 15m bash -c 'until pidof Agent.Listener; do echo "Waiting for Agent.Listener" && sleep 1; done'
 
 if pidof Agent.Listener > /dev/null
 then
   agent_pid=$(pidof Agent.Listener)
   echo "Agent.Listener args:"
-  sed -e "s/\x00/ /g" < /proc/2257/cmdline ; echo
+  sed -e "s/\x00/ /g" < "/proc/$agent_pid/cmdline" ; echo
   printf "killing Agent.Listener process: %s\n" "$agent_pid"
-  echo "kill $agent_pid"
+  kill "$agent_pid"
 else
   echo "Agent.Listener process not found"
 fi
@@ -91,3 +91,7 @@ echo "sudo -E runuser AzDevOps -c '/bin/bash /agent/run.sh'" | at now
 # disown
 
 timeout 15m bash -c 'until pidof Agent.Listener; do echo "Waiting for Agent.Listener" && sleep 5; done'
+sleep 10
+diag_log=$(find /agent/_diag/ -name "*.log" -type f -printf "%Ts %p\n" | sort -n | tail -1 | sed -r -e 's/^[0-9]+ //')
+echo "diag_log: $diag_log"
+cat "$diag_log"

@@ -131,6 +131,7 @@ fi
 # Assign a managed identity access to a resource using Azure CLI
 # https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/howto-assign-access-cli
 
+#TODO: timing on managed identity creation
 if [[ "$AZ_VMSS_MANAGED_IDENTITY" == "true" ]] && [[ $AZ_VMSS_CREATE_RBAC == "true" ]]
 then
   if [[ "$vmss_identity" != "null" ]]
