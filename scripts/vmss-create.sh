@@ -11,6 +11,7 @@ echo "script_path: $script_path"
 root_path=$(dirname "$script_path")
 export root_path
 echo "root_path: $root_path"
+vmss_identity_wait_secs=120
 
 # functions
 
@@ -95,9 +96,8 @@ printf "vmss:\n %s\n" "$vmss"
 
 vmss_show=$(az vmss show --resource-group "$AZ_VMSS_RESOURCE_GROUP_NAME" --name "$AZ_VMSS_NAME" --output json)
 
-
 vmss_boot_diags_enabled=$(echo "$vmss_show" | jq -r '.virtualMachineProfile.diagnosticsProfile.bootDiagnostics.enabled')
-vmss_identity=$(echo "$vmss_show" |jq -r '.identity.principalId')
+
 
 
 # vmss_boot_diags_enabled=$(echo "$vmss" | jq -r '.virtualMachineProfile.diagnosticsProfile.bootDiagnostics.enabled')
@@ -117,7 +117,7 @@ fi
 # Configure managed identities for Azure resources on a virtual machine scale set using Azure CLI
 # https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/qs-configure-cli-windows-vmss
 
-if [[ "$AZ_VMSS_MANAGED_IDENTITY" == "true" ]] && [[ "$vmss_identity" == "null" ]]
+if [[ "$AZ_VMSS_MANAGED_IDENTITY" == "true" ]]
 then
   echo "Configuring managed identity for $AZ_VMSS_NAME"
   az vmss update \
@@ -134,8 +134,20 @@ fi
 #TODO: timing on managed identity creation
 if [[ "$AZ_VMSS_MANAGED_IDENTITY" == "true" ]] && [[ $AZ_VMSS_CREATE_RBAC == "true" ]]
 then
-  if [[ "$vmss_identity" != "null" ]]
+  # wait until the identity property is present, will return "" if found
+  echo "Waiting for managed identity for $AZ_VMSS_NAME, timeout after $vmss_identity_wait_secs seconds"
+  identity=$(az resource wait \
+             --name "$AZ_VMSS_NAME" \
+             --resource-group "$AZ_VMSS_RESOURCE_GROUP_NAME" \
+             --resource-type Microsoft.Compute/virtualMachineScaleSets \
+             --timeout "$vmss_identity_wait_secs" \
+             --custom "identity" \
+             --output tsv)
+
+  if [[ -z "$identity" ]]
   then
+    vmss_show=$(az vmss show --resource-group "$AZ_VMSS_RESOURCE_GROUP_NAME" --name "$AZ_VMSS_NAME" --output json)
+    vmss_identity=$(echo "$vmss_show" |jq -r '.identity.principalId')
     printf "Configuring Contributor access for %s VMSS Managed Identity %s on Subscription %s\n" "$AZ_VMSS_NAME" "$vmss_identity" "$ARM_SUBSCRIPTION_ID"
     az role assignment create \
       --assignee-object-id "$vmss_identity" \
