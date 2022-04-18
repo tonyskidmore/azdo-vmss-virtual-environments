@@ -38,6 +38,7 @@ export AZ_VMSS_ADMIN_NAME=${AZ_VMSS_ADMIN_NAME:-adminuser}
 export AZ_VMSS_INSTANCE_COUNT=${AZ_VMSS_INSTANCE_COUNT:-0}
 export AZ_VMSS_MANAGED_IDENTITY=${AZ_VMSS_MANAGED_IDENTITY:-true}
 export AZ_VMSS_CREATE_RBAC=${AZ_VMSS_CREATE_RBAC:-true}
+export AZ_VMSS_CUSTOM_DATA=${AZ_VMSS_CUSTOM_DATA:-true}
 export IMG_VERSION_REF="/subscriptions/$ARM_SUBSCRIPTION_ID/resourceGroups/$AZ_ACG_RESOURCE_GROUP_NAME/providers/Microsoft.Compute/galleries/$AZ_ACG_NAME/images/$AZ_ACG_DEF/versions/$AZ_ACG_VERSION"
 
 echo "AZ_ACG_NAME: $AZ_ACG_NAME"
@@ -56,6 +57,7 @@ echo "AZ_VMSS_ADMIN_NAME: $AZ_VMSS_ADMIN_NAME"
 echo "AZ_VMSS_INSTANCE_COUNT: $AZ_VMSS_INSTANCE_COUNT"
 echo "AZ_VMSS_MANAGED_IDENTITY: $AZ_VMSS_MANAGED_IDENTITY"
 echo "AZ_VMSS_CREATE_RBAC: $AZ_VMSS_CREATE_RBAC"
+echo "AZ_VMSS_CUSTOM_DATA: $AZ_VMSS_CUSTOM_DATA"
 echo "IMG_VERSION_REF: $IMG_VERSION_REF"
 
 echo "Logging into Azure..."
@@ -70,25 +72,35 @@ az group create \
 cd "$script_path"
 
 # https://docs.microsoft.com/en-us/azure/devops/pipelines/agents/scale-set-agents?view=azure-devops
+
+std_params=("--name" "$AZ_VMSS_NAME"
+  "--resource-group" "$AZ_VMSS_RESOURCE_GROUP_NAME"
+  "--subnet" "/subscriptions/$ARM_SUBSCRIPTION_ID/resourceGroups/$AZ_NET_RESOURCE_GROUP_NAME/providers/Microsoft.Network/virtualNetworks/$AZ_NET_NAME/subnets/$AZ_SUBNET_NAME"
+  "--image" "$IMG_VERSION_REF"
+  "--vm-sku" "$AZ_VMSS_VM_SKU"
+  "--storage-sku" "$AZ_VMSS_STORAGE_SKU"
+  "--admin-username" "$AZ_VMSS_ADMIN_NAME"
+  "--authentication-type" "SSH"
+  "--instance-count" "$AZ_VMSS_INSTANCE_COUNT"
+  "--disable-overprovision"
+  "--upgrade-policy-mode" "manual"
+  "--single-placement-group" "false"
+  "--platform-fault-domain-count" "1"
+  "--os-disk-caching" "readonly"
+  "--output" "json")
+
+custom_data=("--custom-data" "custom-data.sh")
+
+if [[ "$AZ_VMSS_CUSTOM_DATA" == "true" ]]
+then
+  params=( "${std_params[@]}" "${custom_data[@]}" )
+else
+  params=( "${std_params[@]}" )
+fi
+
+printf "Running: az %s\n" "${params[*]}"
 echo "Creating vmss: $AZ_VMSS_NAME"
-vmss=$(az vmss create \
-  --name "$AZ_VMSS_NAME" \
-  --resource-group "$AZ_VMSS_RESOURCE_GROUP_NAME" \
-  --subnet "/subscriptions/$ARM_SUBSCRIPTION_ID/resourceGroups/$AZ_NET_RESOURCE_GROUP_NAME/providers/Microsoft.Network/virtualNetworks/$AZ_NET_NAME/subnets/$AZ_SUBNET_NAME" \
-  --image "$IMG_VERSION_REF" \
-  --vm-sku "$AZ_VMSS_VM_SKU" \
-  --storage-sku "$AZ_VMSS_STORAGE_SKU" \
-  --admin-username "$AZ_VMSS_ADMIN_NAME" \
-  --authentication-type SSH \
-  --instance-count "$AZ_VMSS_INSTANCE_COUNT" \
-  --disable-overprovision \
-  --upgrade-policy-mode manual \
-  --single-placement-group false \
-  --platform-fault-domain-count 1 \
-  --load-balancer "" \
-  --os-disk-caching readonly \
-  --custom-data custom-data.sh \
-  --output json)
+vmss=$(az vmss create --load-balancer "" "${params[@]}")
 
 printf "vmss:\n %s\n" "$vmss"
 
@@ -108,6 +120,17 @@ then
 else
   echo "Boot diagnostics for $AZ_VMSS_NAME already enabled"
 fi
+
+echo "Enabling vmss custom script extension on $AZ_VMSS_NAME"
+# https://docs.microsoft.com/en-us/azure/devops/pipelines/agents/scale-set-agents?view=azure-devops#customizing-virtual-machine-startup-via-the-custom-script-extension
+az vmss extension set \
+--vmss-name "$AZ_VMSS_NAME" \
+--resource-group "$AZ_VMSS_RESOURCE_GROUP_NAME" \
+--name CustomScript \
+--version 2.0 \
+--publisher Microsoft.Azure.Extensions \
+--settings '{ "fileUris": ["https://raw.githubusercontent.com/tonyskidmore/azurerm-vmss-cse/main/cse-vmss-startup.sh"], "commandToExecute": "bash ./cse-vmss-startup.sh" }'
+
 
 # Configure managed identities for Azure resources on a virtual machine scale set using Azure CLI
 # https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/qs-configure-cli-windows-vmss
