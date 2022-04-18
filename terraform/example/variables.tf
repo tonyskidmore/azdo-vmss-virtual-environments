@@ -1,7 +1,7 @@
 variable "resource_group_name" {
   description = "Resource group name"
   type        = string
-  default     = "rg-vmss-example"
+  default     = "rg-ado-vmss-example"
 }
 
 variable "location" {
