@@ -1,5 +1,6 @@
 # Pipeline for simple Terraform testing Azure VMSS self-hosted agents
-# to keep things simple we will not be using remote state, state will only exist during pipeline execution
+# to keep things as simple as possible we will not be using remote state, state will only exist during pipeline execution
+# the purpose of the pipeline is only to test using Terraform with VMSS and Managed identity
 
 parameters:
 
@@ -81,7 +82,7 @@ stages:
       inputs:
         notifyUsers: |
           example@example.com
-        instructions: 'Please validate the terraform plan before continuing'
+        instructions: 'Please validate the "terraform plan" step before continuing'
         onTimeout: 'resume'
 
 - stage: 'apply'
