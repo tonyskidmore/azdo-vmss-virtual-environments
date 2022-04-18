@@ -25,6 +25,7 @@ stages:
   jobs:
 
   - job: init_plan
+    displayName: 'Terraform Init & Plan'
     workspace:
       clean: all
 
@@ -75,6 +76,7 @@ stages:
 
     steps:
     - task: ManualValidation@0
+      displayName: 'Manually Validate Plan'
       timeoutInMinutes: 30
       inputs:
         notifyUsers: |
@@ -130,7 +132,7 @@ stages:
   - job: plan_destroy
     pool:
       name: ${{ parameters.poolName }}
-    displayName: 'Terraform Apply'
+    displayName: 'Terraform Plan Destroy'
     timeoutInMinutes: 60
 
     steps:
@@ -169,6 +171,7 @@ stages:
 
     steps:
     - task: ManualValidation@0
+      displayName: 'Manually Validate Destroy'
       timeoutInMinutes: 30
       inputs:
         notifyUsers: |
