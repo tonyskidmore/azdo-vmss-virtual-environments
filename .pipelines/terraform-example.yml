@@ -53,11 +53,15 @@ stages:
         env:
           ARM_USE_MSI: "true"
 
+      - script: |
+          ls -al "${{ variables.workingDirectory }}"
+        displayName: 'view directory contents'
+
       - task: Cache@2
         displayName: 'register plan cache'
         inputs:
           key: 'terraform | plan | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
-          path: '${{ variables.workingDirectory }}'
+          path: $(System.DefaultWorkingDirectory)
 
 
 - stage: 'validate_plan'
@@ -99,7 +103,7 @@ stages:
           key: 'terraform | plan | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
 
       - script: |
-          ls "${{ variables.workingDirectory }}"
+          ls -al "${{ variables.workingDirectory }}"
         displayName: 'view directory contents'
 
       - script: |
