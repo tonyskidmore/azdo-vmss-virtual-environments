@@ -90,8 +90,9 @@ echo "sudo -E runuser AzDevOps -c '/bin/bash /agent/run.sh'" | at now
 # sudo -E nice -n 0 runuser AzDevOps -c "/bin/bash /agent/run.sh" > /dev/null 2>&1 &
 # disown
 
-timeout 15m bash -c 'until pidof Agent.Listener; do echo "Waiting for Agent.Listener" && sleep 5; done'
+# timeout 15m bash -c 'until pidof Agent.Listener; do echo "Waiting for Agent.Listener" && sleep 5; done'
 sleep 10
 diag_log=$(find /agent/_diag/ -name "*.log" -type f -printf "%Ts %p\n" | sort -n | tail -1 | sed -r -e 's/^[0-9]+ //')
 echo "diag_log: $diag_log"
 cat "$diag_log"
+ps aux

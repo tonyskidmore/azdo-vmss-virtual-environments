@@ -32,6 +32,9 @@ stages:
 
     steps:
 
+      - script: echo "$AGENT_MACHINENAME"
+        displayName: 'AGENT_MACHINENAME'
+
       - script: |
           env
         workingDirectory: '${{ variables.workingDirectory }}'
@@ -100,6 +103,9 @@ stages:
 
     steps:
 
+      - script: echo "$AGENT_MACHINENAME"
+        displayName: 'AGENT_MACHINENAME'
+
       - task: Cache@2
         displayName: 'get plan cache'
         inputs:
@@ -137,6 +143,9 @@ stages:
     timeoutInMinutes: 60
 
     steps:
+
+      - script: echo "$AGENT_MACHINENAME"
+        displayName: 'AGENT_MACHINENAME'
 
       - task: Cache@2
         displayName: 'get apply cache'
@@ -194,6 +203,9 @@ stages:
     timeoutInMinutes: 60
 
     steps:
+
+      - script: echo "$AGENT_MACHINENAME"
+        displayName: 'AGENT_MACHINENAME'
 
       - task: Cache@2
         displayName: 'get plan destroy cache'

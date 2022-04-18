@@ -95,17 +95,12 @@ printf "vmss:\n %s\n" "$vmss"
 # az resource wait --exists --ids "/subscriptions/$ARM_SUBSCRIPTION_ID/resourceGroups/$AZ_VMSS_RESOURCE_GROUP_NAME/providers/Microsoft.Compute/virtualMachineScaleSets/$AZ_VMSS_NAME"
 
 vmss_show=$(az vmss show --resource-group "$AZ_VMSS_RESOURCE_GROUP_NAME" --name "$AZ_VMSS_NAME" --output json)
-
 vmss_boot_diags_enabled=$(echo "$vmss_show" | jq -r '.virtualMachineProfile.diagnosticsProfile.bootDiagnostics.enabled')
-
-
-
-# vmss_boot_diags_enabled=$(echo "$vmss" | jq -r '.virtualMachineProfile.diagnosticsProfile.bootDiagnostics.enabled')
-# printf "vmss_boot_diags_enabled: %s\n" "$vmss_boot_diags_enabled"
+vmss_identity=$(echo "$vmss_show" | jq -r '.identity.principalId')
 
 if [[ $vmss_boot_diags_enabled != "true" ]]
 then
-  echo "Enabling boot diagnostics $AZ_VMSS_NAME"
+  echo "Enabling boot diagnostics on $AZ_VMSS_NAME"
   az vmss update \
     --name "$AZ_VMSS_NAME" \
     --resource-group "$AZ_VMSS_RESOURCE_GROUP_NAME" \
@@ -117,7 +112,7 @@ fi
 # Configure managed identities for Azure resources on a virtual machine scale set using Azure CLI
 # https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/qs-configure-cli-windows-vmss
 
-if [[ "$AZ_VMSS_MANAGED_IDENTITY" == "true" ]]
+if [[ "$AZ_VMSS_MANAGED_IDENTITY" == "true" ]] && [[ "$vmss_identity" == "null" ]]
 then
   echo "Configuring managed identity for $AZ_VMSS_NAME"
   az vmss update \
@@ -125,13 +120,11 @@ then
     --resource-group "$AZ_VMSS_RESOURCE_GROUP_NAME" \
     --set identity.type="SystemAssigned"
 else
-  echo "Not assigning managed identity for $AZ_VMSS_NAME"
+  echo "Not assigning a new managed identity for $AZ_VMSS_NAME"
 fi
 
 # Assign a managed identity access to a resource using Azure CLI
 # https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/howto-assign-access-cli
-
-#TODO: timing on managed identity creation
 if [[ "$AZ_VMSS_MANAGED_IDENTITY" == "true" ]] && [[ $AZ_VMSS_CREATE_RBAC == "true" ]]
 then
   # wait until the identity property is present, will return "" if found
@@ -147,13 +140,17 @@ then
   if [[ -z "$identity" ]]
   then
     vmss_show=$(az vmss show --resource-group "$AZ_VMSS_RESOURCE_GROUP_NAME" --name "$AZ_VMSS_NAME" --output json)
-    vmss_identity=$(echo "$vmss_show" |jq -r '.identity.principalId')
-    printf "Configuring Contributor access for %s VMSS Managed Identity %s on Subscription %s\n" "$AZ_VMSS_NAME" "$vmss_identity" "$ARM_SUBSCRIPTION_ID"
-    az role assignment create \
-      --assignee-object-id "$vmss_identity" \
-      --assignee-principal-type ServicePrincipal \
-      --role 'Contributor' \
-      --scope "/subscriptions/$ARM_SUBSCRIPTION_ID"
+    vmss_identity=$(echo "$vmss_show" | jq -r '.identity.principalId')
+    roles=( "Contributor" )
+    for role in "${roles[@]}"
+    do
+      printf "Configuring $role access for %s VMSS Managed Identity %s on Subscription %s\n" "$AZ_VMSS_NAME" "$vmss_identity" "$ARM_SUBSCRIPTION_ID"
+      az role assignment create \
+        --assignee-object-id "$vmss_identity" \
+        --assignee-principal-type ServicePrincipal \
+        --role "$role" \
+        --scope "/subscriptions/$ARM_SUBSCRIPTION_ID"
+    done
   else
     echo "No identity found for $AZ_VMSS_NAME"
   fi
