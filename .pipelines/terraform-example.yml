@@ -123,7 +123,7 @@ stages:
 - stage: 'plan_destroy'
   pool:
     name: ${{ parameters.poolName }}
-  displayName: "Terraform Apply"
+  displayName: "Terraform Plan Destroy"
 
   jobs:
 
@@ -160,7 +160,7 @@ stages:
 
 - stage: 'validate_plan_destroy'
   pool: server
-  displayName: "Validate Plan"
+  displayName: "Validate Destroy"
 
   jobs:
   - job: waitForValidation
@@ -173,7 +173,7 @@ stages:
       inputs:
         notifyUsers: |
           example@example.com
-        instructions: 'Please validate the terraform destroy plan before continuing'
+        instructions: 'Please validate the "terraform plan -destroy" step before continuing'
         onTimeout: 'resume'
 
 - stage: 'destroy'
@@ -186,7 +186,7 @@ stages:
   - job: destroy
     pool:
       name: ${{ parameters.poolName }}
-    displayName: 'Terraform Apply'
+    displayName: 'Terraform Destroy'
     timeoutInMinutes: 60
 
     steps:
