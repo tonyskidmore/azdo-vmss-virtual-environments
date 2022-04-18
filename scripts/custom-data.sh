@@ -15,8 +15,10 @@ timeout 15m bash -c 'until pidof Agent.Listener; do echo "Waiting for Agent.List
 if pidof Agent.Listener > /dev/null
 then
   agent_pid=$(pidof Agent.Listener)
+  echo "Agent.Listener args:"
+  sed -e "s/\x00/ /g" < /proc/2257/cmdline ; echo
   printf "killing Agent.Listener process: %s\n" "$agent_pid"
-  kill "$agent_pid"
+  echo "kill $agent_pid"
 else
   echo "Agent.Listener process not found"
 fi
@@ -88,4 +90,4 @@ echo "sudo -E runuser AzDevOps -c '/bin/bash /agent/run.sh'" | at now
 # sudo -E nice -n 0 runuser AzDevOps -c "/bin/bash /agent/run.sh" > /dev/null 2>&1 &
 # disown
 
-# timeout 15m bash -c 'until pidof Agent.Listener; do echo "Waiting for Agent.Listener" && sleep 5; done'
+timeout 15m bash -c 'until pidof Agent.Listener; do echo "Waiting for Agent.Listener" && sleep 5; done'

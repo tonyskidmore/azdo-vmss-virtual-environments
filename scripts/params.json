@@ -12,5 +12,5 @@
   "serviceEndpointScope": "74699cfc-c147-4291-b944-90964b5dfba0",
   "sizingAttempts": 0,
   "state": "online",
-  "timeToLiveMinutes": 15
+  "timeToLiveMinutes": 30
 }

@@ -1,5 +1,5 @@
 # Pipeline for simple Terraform testing Azure VMSS self-hosted agents
-# to keep things simple we will not be using remote state
+# to keep things simple we will not be using remote state, state will only exist during pipeline execution
 
 parameters:
 
@@ -30,12 +30,6 @@ stages:
 
     steps:
 
-      - task: Cache@2
-        displayName: 'register plan cache'
-        inputs:
-          key: 'terraform | plan | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
-          path: '${{ variables.workingDirectory }}'
-
       - script: |
           env
         workingDirectory: '${{ variables.workingDirectory }}'
@@ -59,13 +53,20 @@ stages:
         env:
           ARM_USE_MSI: "true"
 
+      - task: Cache@2
+        displayName: 'register plan cache'
+        inputs:
+          key: 'terraform | plan | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
+          path: '${{ variables.workingDirectory }}'
+
+
 - stage: 'validate_plan'
   pool: server
   displayName: "Validate Plan"
 
   jobs:
   - job: waitForValidation
-    displayName: 'Review and approve terraform plan before approving'
+    displayName: 'Review and approve terraform plan before resuming'
     timeoutInMinutes: 60
 
     steps:
@@ -96,6 +97,10 @@ stages:
         displayName: 'get plan cache'
         inputs:
           key: 'terraform | plan | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
+
+      - script: |
+          ls "${{ variables.workingDirectory }}"
+        displayName: 'view directory contents'
 
       - script: |
           printf "terraform apply tfplan\n"
