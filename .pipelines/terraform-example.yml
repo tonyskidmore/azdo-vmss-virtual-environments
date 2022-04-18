@@ -80,7 +80,7 @@ stages:
         notifyUsers: |
           example@example.com
         instructions: 'Please validate the terraform plan before continuing'
-        onTimeout: 'reject'
+        onTimeout: 'resume'
 
 - stage: 'apply'
   pool:
@@ -111,5 +111,99 @@ stages:
           TF_IN_AUTOMATION=true terraform apply tfplan
         workingDirectory: '${{ variables.workingDirectory }}'
         displayName: 'terraform apply'
+        env:
+          ARM_USE_MSI: "true"
+
+      - task: Cache@2
+        displayName: 'register apply cache'
+        inputs:
+          key: 'terraform | apply | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
+          path: $(System.DefaultWorkingDirectory)
+
+- stage: 'plan_destroy'
+  pool:
+    name: ${{ parameters.poolName }}
+  displayName: "Terraform Apply"
+
+  jobs:
+
+  - job: plan_destroy
+    pool:
+      name: ${{ parameters.poolName }}
+    displayName: 'Terraform Apply'
+    timeoutInMinutes: 60
+
+    steps:
+
+      - task: Cache@2
+        displayName: 'get apply cache'
+        inputs:
+          key: 'terraform | apply | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
+
+      - script: |
+          ls -al "${{ variables.workingDirectory }}"
+        displayName: 'view directory contents'
+
+      - script: |
+          printf "terraform plan -destroy -out tfplan\n"
+          TF_IN_AUTOMATION=true terraform plan -destroy -out tfplan
+        workingDirectory: '${{ variables.workingDirectory }}'
+        displayName: 'terraform plan -destroy'
+        env:
+          ARM_USE_MSI: "true"
+
+      - task: Cache@2
+        displayName: 'register apply cache'
+        inputs:
+          key: 'terraform | plan_destroy | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
+          path: $(System.DefaultWorkingDirectory)
+
+- stage: 'validate_plan_destroy'
+  pool: server
+  displayName: "Validate Plan"
+
+  jobs:
+  - job: waitForValidation
+    displayName: 'Review and approve terraform destroy plan before resuming'
+    timeoutInMinutes: 60
+
+    steps:
+    - task: ManualValidation@0
+      timeoutInMinutes: 30
+      inputs:
+        notifyUsers: |
+          example@example.com
+        instructions: 'Please validate the terraform destroy plan before continuing'
+        onTimeout: 'resume'
+
+- stage: 'destroy'
+  pool:
+    name: ${{ parameters.poolName }}
+  displayName: "Terraform Destroy"
+
+  jobs:
+
+  - job: destroy
+    pool:
+      name: ${{ parameters.poolName }}
+    displayName: 'Terraform Apply'
+    timeoutInMinutes: 60
+
+    steps:
+
+      - task: Cache@2
+        displayName: 'get plan destroy cache'
+        inputs:
+          key: 'terraform | plan_destroy | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
+
+      - script: |
+          ls -al "${{ variables.workingDirectory }}"
+        displayName: 'view directory contents'
+
+      - script: |
+          printf "terraform apply tfplan\n"
+          TF_IN_AUTOMATION=true terraform apply tfplan
+        workingDirectory: '${{ variables.workingDirectory }}'
+        displayName: 'terraform apply (destroy)'
         env:
           ARM_USE_MSI: "true"
