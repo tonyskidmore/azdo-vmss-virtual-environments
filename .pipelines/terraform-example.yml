@@ -81,7 +81,7 @@ stages:
     steps:
     - task: ManualValidation@0
       displayName: 'Manually Validate Plan'
-      timeoutInMinutes: 30
+      timeoutInMinutes: 5
       inputs:
         notifyUsers: |
           example@example.com
@@ -182,7 +182,7 @@ stages:
     steps:
     - task: ManualValidation@0
       displayName: 'Manually Validate Destroy'
-      timeoutInMinutes: 30
+      timeoutInMinutes: 5
       inputs:
         notifyUsers: |
           example@example.com
