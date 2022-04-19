@@ -3,7 +3,7 @@
 name: "ubuntu20"
 
 parameters:
-  - name: backendServiceArm
+  - name: imageRelease
     type: string
     default: 'ubuntu20/latest'
     displayName: "virtual-environments release"
@@ -95,4 +95,4 @@ jobs:
         filePath: 'scripts/ve-image-create.sh'
       displayName: "Run create image script"
       env:
-        VE_RELEASE: 
+        VE_RELEASE: '${{ parameters.imageRelease }}'
