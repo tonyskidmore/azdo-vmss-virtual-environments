@@ -34,8 +34,12 @@ export VE_IMAGE_SKU=${VE_IMAGE_SKU:-Ubuntu2004}
 export VE_IMAGE_TYPE=${VE_IMAGE_TYPE:-Ubuntu2004}
 export VE_IMAGES_TO_KEEP=${VE_IMAGES_TO_KEEP:-2}
 export VE_IMAGES_VERSION_START=${VE_IMAGES_VERSION_START:-1.0.0}
+# specific tag
 # export VE_RELEASE=${VE_RELEASE:-ubuntu20/20220405.4}
-export VE_RELEASE=${VE_RELEASE:-ubuntu20/latest}
+# use latest available tag
+# export VE_RELEASE=${VE_RELEASE:-ubuntu20/latest}
+# use a specific commit
+export VE_RELEASE=${VE_RELEASE:-28607d35}
 export PACKER_NO_COLOR=${PACKER_NO_COLOR:-1}
 export PACKER_LOG=${PACKER_LOG:-1}
 export PACKER_LOG_PATH=${PACKER_LOG_PATH:-$root_path/packer-log.txt}
@@ -63,11 +67,19 @@ then
 fi
 
 # split release into an array
-# readarray -d "/" -t version_array <<< "$VE_RELEASE"
 IFS='/' read -ra version_array <<< "$VE_RELEASE"
 
-if [[ "${version_array[1]}" == "latest" ]]
+# assume that if version_array is a single element and not in the format of version/tag
+# that a commit is being passed
+if [[ ${#version_array[*]} -eq 1 ]]
 then
+  echo "VE_RELEASE is a commit"
+  VE_RELEASE="${version_array[0]}"
+  git clone "$VE_REPO" "$root_path/virtual-environments"
+  git -C "$root_path/virtual-environments" checkout "$VE_RELEASE"
+elif [[ "${version_array[1]}" == "latest" ]]
+then
+  echo "VE_RELEASE wants the latest tag"
   git clone "$VE_REPO" "$root_path/virtual-environments"
   readarray -t tags <<< "$(git -C "$root_path/virtual-environments" tag --list --sort=-committerdate "${version_array[0]}/*")"
   declare -p tags
@@ -75,6 +87,7 @@ then
   git -C "$root_path/virtual-environments" checkout "$latest_tag"
   VE_RELEASE="$latest_tag"
 else
+  echo "VE_RELEASE is a version/tag"
   git clone -b "$VE_RELEASE" --single-branch "$VE_REPO" "$root_path/virtual-environments"
 fi
 
