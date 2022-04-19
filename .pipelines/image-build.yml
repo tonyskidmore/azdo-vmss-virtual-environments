@@ -5,7 +5,12 @@ name: "ubuntu20"
 parameters:
   - name: backendServiceArm
     type: string
+    default: 'ubuntu20/latest'
+    displayName: "virtual-environments release"
+  - name: backendServiceArm
+    type: string
     default: 'vmss'
+    displayName: "AzureRm Service Connection Name"
 
 trigger: none
 
@@ -89,3 +94,5 @@ jobs:
       inputs:
         filePath: 'scripts/ve-image-create.sh'
       displayName: "Run create image script"
+      env:
+        VE_RELEASE: 
