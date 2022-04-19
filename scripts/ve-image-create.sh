@@ -37,9 +37,9 @@ export VE_IMAGES_VERSION_START=${VE_IMAGES_VERSION_START:-1.0.0}
 # specific tag
 # export VE_RELEASE=${VE_RELEASE:-ubuntu20/20220405.4}
 # use latest available tag
-# export VE_RELEASE=${VE_RELEASE:-ubuntu20/latest}
+export VE_RELEASE=${VE_RELEASE:-ubuntu20/latest}
 # use a specific commit
-export VE_RELEASE=${VE_RELEASE:-28607d35}
+# export VE_RELEASE=${VE_RELEASE:-9364605}
 export PACKER_NO_COLOR=${PACKER_NO_COLOR:-1}
 export PACKER_LOG=${PACKER_LOG:-1}
 export PACKER_LOG_PATH=${PACKER_LOG_PATH:-$root_path/packer-log.txt}
