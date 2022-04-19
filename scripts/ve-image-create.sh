@@ -31,7 +31,7 @@ export VE_REPO=${VE_REPO:-https://github.com/actions/virtual-environments.git}
 export VE_IMAGE_PUBLISHER=${VE_IMAGE_PUBLISHER:-actions}
 export VE_IMAGE_OFFER=${VE_IMAGE_OFFER:-virtual-environments}
 export VE_IMAGE_SKU=${VE_IMAGE_SKU:-Ubuntu2004}
-export VE_IMAGE_TYPE=${VE_IMAGE_TYPE:-Ubuntu2004}
+export VE_IMAGE_DEF=${VE_IMAGE_DEF:-ubuntu2004}
 export VE_IMAGES_TO_KEEP=${VE_IMAGES_TO_KEEP:-2}
 export VE_IMAGES_VERSION_START=${VE_IMAGES_VERSION_START:-1.0.0}
 # specific tag
@@ -52,7 +52,7 @@ echo "VE_REPO=${VE_REPO}"
 echo "VE_IMAGE_PUBLISHER=${VE_IMAGE_PUBLISHER}"
 echo "VE_IMAGE_OFFER=${VE_IMAGE_OFFER}"
 echo "VE_IMAGE_SKU=${VE_IMAGE_SKU}"
-echo "VE_IMAGE_TYPE=${VE_IMAGE_TYPE}"
+echo "VE_IMAGE_DEF=${VE_IMAGE_DEF}"
 echo "VE_IMAGES_TO_KEEP=${VE_IMAGES_TO_KEEP}"
 echo "VE_IMAGES_VERSION_START=${VE_IMAGES_VERSION_START}"
 echo "VE_RELEASE=${VE_RELEASE}"
@@ -74,7 +74,7 @@ IFS='/' read -ra version_array <<< "$VE_RELEASE"
 if [[ ${#version_array[*]} -eq 1 ]]
 then
   echo "VE_RELEASE is a commit"
-  VE_RELEASE="${version_array[0]}"
+  VE_RELEASE="${version_array[0]}" # commit
   git clone "$VE_REPO" "$root_path/virtual-environments"
   git -C "$root_path/virtual-environments" checkout "$VE_RELEASE"
 elif [[ "${version_array[1]}" == "latest" ]]
@@ -110,14 +110,15 @@ az sig create \
 # get JSON output of existing image versions
 echo "Getting current Azure Compute Gallery Image Version versions"
 img_versions_json=$(az sig image-version list \
-  --gallery-image-definition "${version_array[0]}" \
-  --gallery-name "$AZ_ACG_NAME" \
-  --resource-group "$AZ_ACG_RESOURCE_GROUP_NAME" \
-  --output json)
+                    --gallery-image-definition "$VE_IMAGE_DEF" \
+                    --gallery-name "$AZ_ACG_NAME" \
+                    --resource-group "$AZ_ACG_RESOURCE_GROUP_NAME" \
+                    --output json)
 
 # read image version names into array
 readarray -t img_versions <<< "$(echo "$img_versions_json" | jq -r .[].name)"
 
+# TODO: check for "null" if image versions do not already exist
 # check existing tagged versions
 readarray -t source_tags <<< "$(echo "$img_versions_json" | jq -r '.[].tags[]')"
 declare -p source_tags
@@ -154,16 +155,30 @@ printf "ostype: %s\n" "$ostype"
 printf "osdiskuri: %s\n" "$osdiskuri"
 printf "storageaccount: %s\n" "$storageaccount"
 
-echo "Creating Azure Compute Gallery Image Definition $AZ_ACG_NAME"
-az sig image-definition create \
-   --resource-group "$AZ_ACG_RESOURCE_GROUP_NAME" \
-   --gallery-name "$AZ_ACG_NAME" \
-   --gallery-image-definition "${version_array[0]}" \
-   --publisher "$VE_IMAGE_PUBLISHER" \
-   --offer "$VE_IMAGE_OFFER" \
-   --sku "$VE_IMAGE_SKU" \
-   --os-type "$ostype" \
-   --os-state generalized
+echo "Getting current Azure Compute Gallery Image Definitions"
+img_def_json=$(az sig image-definition list \
+                --gallery-name "$AZ_ACG_NAME" \
+                --resource-group "$AZ_ACG_RESOURCE_GROUP_NAME" \
+                --output json)
+
+readarray -t img_defs <<< "$(echo "$img_def_json" | jq -r .[].name)"
+declare -p img_defs
+
+if array_contains img_defs "$VE_IMAGE_DEF"
+then
+  echo "Azure Compute Gallery Image Definition $VE_IMAGE_DEF already exists"
+else
+  echo "Creating Azure Compute Gallery Image Definition $VE_IMAGE_DEF"
+  az sig image-definition create \
+    --resource-group "$AZ_ACG_RESOURCE_GROUP_NAME" \
+    --gallery-name "$AZ_ACG_NAME" \
+    --gallery-image-definition "$VE_IMAGE_DEF" \
+    --publisher "$VE_IMAGE_PUBLISHER" \
+    --offer "$VE_IMAGE_OFFER" \
+    --sku "$VE_IMAGE_SKU" \
+    --os-type "$ostype" \
+    --os-state generalized
+fi
 
 echo "Found ${#img_versions[*]} current version definitions"
 echo "Current versions:"
@@ -203,7 +218,7 @@ echo "Creating Azure Compute Gallery Image Version $version"
 az sig image-version create \
   --resource-group "$AZ_ACG_RESOURCE_GROUP_NAME" \
   --gallery-name "$AZ_ACG_NAME" \
-  --gallery-image-definition "${version_array[0]}" \
+  --gallery-image-definition "$VE_IMAGE_DEF" \
   --gallery-image-version "$version" \
   --os-vhd-storage-account "/subscriptions/$ARM_SUBSCRIPTION_ID/resourceGroups/$AZ_RESOURCE_GROUP_NAME/providers/Microsoft.Storage/storageAccounts/$storageaccount" \
   --os-vhd-uri "$osdiskuri" \
