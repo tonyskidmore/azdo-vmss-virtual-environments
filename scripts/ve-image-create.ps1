@@ -1,6 +1,6 @@
-Write-Host "Running PowerShell script: $MyInvocation.MyCommand.Path"
-Write-Host "script_path=$env:script_path"
-Write-Host "root_path=$env:root_path"
+Write-Output "Running PowerShell script: $MyInvocation.MyCommand.Path"
+Write-Output "script_path=$env:script_path"
+Write-Output "root_path=$env:root_path"
 
 Import-Module $env:root_path/virtual-environments/helpers/GenerateResourcesAndImage.ps1
 
