@@ -1,6 +1,7 @@
 ---
 
 version: "3.9"
+
 services:
   azure-tools:
     image: "ghcr.io/tonyskidmore/azure-tools:latest"

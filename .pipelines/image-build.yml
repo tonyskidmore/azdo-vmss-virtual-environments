@@ -32,67 +32,67 @@ schedules:
 
 resources:
   containers:
-  - container: azure-tools
-    image: '${{ variables.containerImage }}'
-    options: "--name rover-container"
+    - container: azure-tools
+      image: '${{ variables.containerImage }}'
+      options: "--name rover-container"
 
 jobs:
-- job: imagebuild
-  displayName: "Image Build"
-  continueOnError: false
-  # https://docs.microsoft.com/en-us/azure/devops/pipelines/process/phases?view=azure-devops&tabs=yaml#timeouts
-  timeoutInMinutes: 240
+  - job: imagebuild
+    displayName: "Image Build"
+    continueOnError: false
+    # https://docs.microsoft.com/en-us/azure/devops/pipelines/process/phases?view=azure-devops&tabs=yaml#timeouts
+    timeoutInMinutes: 240
 
-  container: azure-tools
+    container: azure-tools
 
-  steps:
+    steps:
 
-    - checkout: self
+      - checkout: self
 
-    - task: AzureCLI@2
-      inputs:
-        scriptType: bash
-        scriptLocation: inlineScript
-        addSpnToEnvironment: true
-        azureSubscription: '${{ parameters.backendServiceArm }}'
-        inlineScript: |
-          set -e
+      - task: AzureCLI@2
+        inputs:
+          scriptType: bash
+          scriptLocation: inlineScript
+          addSpnToEnvironment: true
+          azureSubscription: '${{ parameters.backendServiceArm }}'
+          inlineScript: |
+            set -e
 
-          az_subscription=""
+            az_subscription=""
 
-          if [[ -n "$az_subscription" ]]
-          then
-            printf "azureSubscription: %s\n" "$az_subscription"
-            subscription_id="$az_subscription"
-          else
-            subscription_id=$(az account show --query 'id' --output tsv)
-          fi
+            if [[ -n "$az_subscription" ]]
+            then
+              printf "azureSubscription: %s\n" "$az_subscription"
+              subscription_id="$az_subscription"
+            else
+              subscription_id=$(az account show --query 'id' --output tsv)
+            fi
 
-          tenant_id=$(az account show --query 'tenantId' --output tsv)
-          client_id=${servicePrincipalId:-}
-          client_secret=${servicePrincipalKey:-}
-          echo "##vso[task.setvariable variable=ARM_SUBSCRIPTION_ID;]$subscription_id"
-          echo "##vso[task.setvariable variable=ARM_TENANT_ID;]$tenant_id"
-          echo "##vso[task.setvariable variable=ARM_CLIENT_ID;]$client_id"
-          echo "##vso[task.setvariable variable=ARM_CLIENT_SECRET;]$client_secret"
+            tenant_id=$(az account show --query 'tenantId' --output tsv)
+            client_id=${servicePrincipalId:-}
+            client_secret=${servicePrincipalKey:-}
+            echo "##vso[task.setvariable variable=ARM_SUBSCRIPTION_ID;]$subscription_id"
+            echo "##vso[task.setvariable variable=ARM_TENANT_ID;]$tenant_id"
+            echo "##vso[task.setvariable variable=ARM_CLIENT_ID;]$client_id"
+            echo "##vso[task.setvariable variable=ARM_CLIENT_SECRET;]$client_secret"
 
-      displayName: 'Set azure environment variables from service connection'
+        displayName: 'Set azure environment variables from service connection'
 
-    - script: |
-        echo "ARM_SUBSCRIPTION_ID: $ARM_SUBSCRIPTION_ID"
-        echo "ARM_TENANT_ID: $ARM_TENANT_ID"
-        echo "ARM_CLIENT_ID: $ARM_CLIENT_ID"
-        echo "ARM_CLIENT_SECRET: $ARM_CLIENT_SECRET"
-      displayName: 'Check env'
+      - script: |
+          echo "ARM_SUBSCRIPTION_ID: $ARM_SUBSCRIPTION_ID"
+          echo "ARM_TENANT_ID: $ARM_TENANT_ID"
+          echo "ARM_CLIENT_ID: $ARM_CLIENT_ID"
+          echo "ARM_CLIENT_SECRET: $ARM_CLIENT_SECRET"
+        displayName: 'Check env'
 
-    - script: |
-        env
-        ls "$SYSTEM_DEFAULTWORKINGDIRECTORY"
-      displayName: "Debug"
+      - script: |
+          env
+          ls "$SYSTEM_DEFAULTWORKINGDIRECTORY"
+        displayName: "Debug"
 
-    - task: Bash@3
-      inputs:
-        filePath: 'scripts/ve-image-create.sh'
-      displayName: "Run create image script"
-      env:
-        VE_RELEASE: '${{ parameters.imageRelease }}'
+      - task: Bash@3
+        inputs:
+          filePath: 'scripts/ve-image-create.sh'
+        displayName: "Run create image script"
+        env:
+          VE_RELEASE: '${{ parameters.imageRelease }}'

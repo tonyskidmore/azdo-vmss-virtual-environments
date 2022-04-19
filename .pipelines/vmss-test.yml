@@ -1,3 +1,5 @@
+---
+
 # Pipeline for testing Azure VMSS self-hosted agents
 
 parameters:
