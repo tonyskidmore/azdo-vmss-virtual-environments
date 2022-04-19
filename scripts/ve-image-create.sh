@@ -31,7 +31,7 @@ export VE_REPO=${VE_REPO:-https://github.com/actions/virtual-environments.git}
 export VE_IMAGE_PUBLISHER=${VE_IMAGE_PUBLISHER:-actions}
 export VE_IMAGE_OFFER=${VE_IMAGE_OFFER:-virtual-environments}
 export VE_IMAGE_SKU=${VE_IMAGE_SKU:-Ubuntu2004}
-export VE_IMAGE_DEF=${VE_IMAGE_DEF:-ubuntu2004}
+export VE_IMAGE_DEF=${VE_IMAGE_DEF:-ubuntu20}
 export VE_IMAGES_TO_KEEP=${VE_IMAGES_TO_KEEP:-2}
 export VE_IMAGES_VERSION_START=${VE_IMAGES_VERSION_START:-1.0.0}
 # specific tag
