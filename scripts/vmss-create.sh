@@ -98,13 +98,13 @@ else
   params=( "${std_params[@]}" )
 fi
 
-printf "Running: az %s\n" "${params[*]}"
+printf "Running: az vmss create --load-balancer \"\" %s\n" "${params[*]}"
 echo "Creating vmss: $AZ_VMSS_NAME"
 vmss=$(az vmss create --load-balancer "" "${params[@]}")
 
 printf "vmss:\n %s\n" "$vmss"
 
-# az resource wait --exists --ids "/subscriptions/$ARM_SUBSCRIPTION_ID/resourceGroups/$AZ_VMSS_RESOURCE_GROUP_NAME/providers/Microsoft.Compute/virtualMachineScaleSets/$AZ_VMSS_NAME"
+az resource wait --exists --ids "/subscriptions/$ARM_SUBSCRIPTION_ID/resourceGroups/$AZ_VMSS_RESOURCE_GROUP_NAME/providers/Microsoft.Compute/virtualMachineScaleSets/$AZ_VMSS_NAME"
 
 vmss_show=$(az vmss show --resource-group "$AZ_VMSS_RESOURCE_GROUP_NAME" --name "$AZ_VMSS_NAME" --output json)
 vmss_boot_diags_enabled=$(echo "$vmss_show" | jq -r '.virtualMachineProfile.diagnosticsProfile.bootDiagnostics.enabled')

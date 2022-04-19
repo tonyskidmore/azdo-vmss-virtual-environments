@@ -1,3 +1,5 @@
+---
+
 # Pipeline for simple Terraform testing Azure VMSS self-hosted agents
 # to keep things as simple as possible we will not be using remote state, state will only exist during pipeline execution
 # the purpose of the pipeline is only to test using Terraform with VMSS and Managed identity
@@ -18,208 +20,210 @@ trigger: none
 
 stages:
 
-- stage: 'init_plan'
-  pool:
-    name: ${{ parameters.poolName }}
-  displayName: "Terraform Init & Plan"
-
-  jobs:
-
-  - job: init_plan
-    displayName: 'Terraform Init & Plan'
-    workspace:
-      clean: all
-
-    steps:
-
-      - script: echo "$AGENT_MACHINENAME"
-        displayName: 'AGENT_MACHINENAME'
-
-      - script: |
-          env
-        workingDirectory: '${{ variables.workingDirectory }}'
-        displayName: 'env'
-        env:
-          ARM_USE_MSI: "true"
-
-      - script: |
-          printf "terraform init\n"
-          TF_IN_AUTOMATION=true terraform init -backend=false
-        workingDirectory: '${{ variables.workingDirectory }}'
-        displayName: 'terraform init'
-        env:
-          ARM_USE_MSI: "true"
-
-      - script: |
-          printf "terraform plan -out tfplan\n"
-          TF_IN_AUTOMATION=true terraform plan -out tfplan
-        workingDirectory: '${{ variables.workingDirectory }}'
-        displayName: 'terraform plan'
-        env:
-          ARM_USE_MSI: "true"
-
-      - script: |
-          ls -al "${{ variables.workingDirectory }}"
-        displayName: 'view directory contents'
-
-      - task: Cache@2
-        displayName: 'register plan cache'
-        inputs:
-          key: 'terraform | plan | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
-          path: $(System.DefaultWorkingDirectory)
-
-
-- stage: 'validate_plan'
-  pool: server
-  displayName: "Validate Plan"
-
-  jobs:
-  - job: waitForValidation
-    displayName: 'Review and approve terraform plan before resuming'
-    timeoutInMinutes: 60
-
-    steps:
-    - task: ManualValidation@0
-      displayName: 'Manually Validate Plan'
-      timeoutInMinutes: 5
-      inputs:
-        notifyUsers: |
-          example@example.com
-        instructions: 'Please validate the "terraform plan" step before continuing'
-        onTimeout: 'resume'
-
-- stage: 'apply'
-  pool:
-    name: ${{ parameters.poolName }}
-  displayName: "Terraform Apply"
-
-  jobs:
-
-  - job: apply
+  - stage: 'init_plan'
     pool:
       name: ${{ parameters.poolName }}
-    displayName: 'Terraform Apply'
-    timeoutInMinutes: 60
+    displayName: "Terraform Init & Plan"
 
-    steps:
+    jobs:
 
-      - script: echo "$AGENT_MACHINENAME"
-        displayName: 'AGENT_MACHINENAME'
+      - job: init_plan
+        displayName: 'Terraform Init & Plan'
+        workspace:
+          clean: all
 
-      - task: Cache@2
-        displayName: 'get plan cache'
-        inputs:
-          key: 'terraform | plan | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
+        steps:
 
-      - script: |
-          ls -al "${{ variables.workingDirectory }}"
-        displayName: 'view directory contents'
+          - script: echo "$AGENT_MACHINENAME"
+            displayName: 'AGENT_MACHINENAME'
 
-      - script: |
-          printf "terraform apply tfplan\n"
-          TF_IN_AUTOMATION=true terraform apply tfplan
-        workingDirectory: '${{ variables.workingDirectory }}'
-        displayName: 'terraform apply'
-        env:
-          ARM_USE_MSI: "true"
+          - script: |
+              env
+            workingDirectory: '${{ variables.workingDirectory }}'
+            displayName: 'env'
+            env:
+              ARM_USE_MSI: "true"
 
-      - task: Cache@2
-        displayName: 'register apply cache'
-        inputs:
-          key: 'terraform | apply | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
-          path: $(System.DefaultWorkingDirectory)
+          - script: |
+              printf "terraform init\n"
+              TF_IN_AUTOMATION=true terraform init -backend=false
+            workingDirectory: '${{ variables.workingDirectory }}'
+            displayName: 'terraform init'
+            env:
+              ARM_USE_MSI: "true"
 
-- stage: 'plan_destroy'
-  pool:
-    name: ${{ parameters.poolName }}
-  displayName: "Terraform Plan Destroy"
+          - script: |
+              printf "terraform plan -out tfplan\n"
+              TF_IN_AUTOMATION=true terraform plan -out tfplan
+            workingDirectory: '${{ variables.workingDirectory }}'
+            displayName: 'terraform plan'
+            env:
+              ARM_USE_MSI: "true"
 
-  jobs:
+          - script: |
+              ls -al "${{ variables.workingDirectory }}"
+            displayName: 'view directory contents'
 
-  - job: plan_destroy
+          - task: Cache@2
+            displayName: 'register plan cache'
+            inputs:
+              key: 'terraform | plan | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
+              path: $(System.DefaultWorkingDirectory)
+
+
+  - stage: 'validate_plan'
+    pool: server
+    displayName: "Validate Plan"
+
+    jobs:
+
+      - job: waitForValidation
+        displayName: 'Review and approve terraform plan before resuming'
+        timeoutInMinutes: 60
+
+        steps:
+        - task: ManualValidation@0
+          displayName: 'Manually Validate Plan'
+          timeoutInMinutes: 5
+          inputs:
+            notifyUsers: |
+              example@example.com
+            instructions: 'Please validate the "terraform plan" step before continuing'
+            onTimeout: 'resume'
+
+  - stage: 'apply'
     pool:
       name: ${{ parameters.poolName }}
-    displayName: 'Terraform Plan Destroy'
-    timeoutInMinutes: 60
+    displayName: "Terraform Apply"
 
-    steps:
+    jobs:
 
-      - script: echo "$AGENT_MACHINENAME"
-        displayName: 'AGENT_MACHINENAME'
+      - job: apply
+        pool:
+          name: ${{ parameters.poolName }}
+        displayName: 'Terraform Apply'
+        timeoutInMinutes: 60
 
-      - task: Cache@2
-        displayName: 'get apply cache'
-        inputs:
-          key: 'terraform | apply | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
+        steps:
 
-      - script: |
-          ls -al "${{ variables.workingDirectory }}"
-        displayName: 'view directory contents'
+          - script: echo "$AGENT_MACHINENAME"
+            displayName: 'AGENT_MACHINENAME'
 
-      - script: |
-          printf "terraform plan -destroy -out tfplan\n"
-          TF_IN_AUTOMATION=true terraform plan -destroy -out tfplan
-        workingDirectory: '${{ variables.workingDirectory }}'
-        displayName: 'terraform plan -destroy'
-        env:
-          ARM_USE_MSI: "true"
+          - task: Cache@2
+            displayName: 'get plan cache'
+            inputs:
+              key: 'terraform | plan | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
 
-      - task: Cache@2
-        displayName: 'register apply cache'
-        inputs:
-          key: 'terraform | plan_destroy | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
-          path: $(System.DefaultWorkingDirectory)
+          - script: |
+              ls -al "${{ variables.workingDirectory }}"
+            displayName: 'view directory contents'
 
-- stage: 'validate_plan_destroy'
-  pool: server
-  displayName: "Validate Destroy"
+          - script: |
+              printf "terraform apply tfplan\n"
+              TF_IN_AUTOMATION=true terraform apply tfplan
+            workingDirectory: '${{ variables.workingDirectory }}'
+            displayName: 'terraform apply'
+            env:
+              ARM_USE_MSI: "true"
 
-  jobs:
-  - job: waitForValidation
-    displayName: 'Review and approve terraform destroy plan before resuming'
-    timeoutInMinutes: 60
+          - task: Cache@2
+            displayName: 'register apply cache'
+            inputs:
+              key: 'terraform | apply | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
+              path: $(System.DefaultWorkingDirectory)
 
-    steps:
-    - task: ManualValidation@0
-      displayName: 'Manually Validate Destroy'
-      timeoutInMinutes: 5
-      inputs:
-        notifyUsers: |
-          example@example.com
-        instructions: 'Please validate the "terraform plan -destroy" step before continuing'
-        onTimeout: 'resume'
-
-- stage: 'destroy'
-  pool:
-    name: ${{ parameters.poolName }}
-  displayName: "Terraform Destroy"
-
-  jobs:
-
-  - job: destroy
+  - stage: 'plan_destroy'
     pool:
       name: ${{ parameters.poolName }}
-    displayName: 'Terraform Destroy'
-    timeoutInMinutes: 60
+    displayName: "Terraform Plan Destroy"
 
-    steps:
+    jobs:
 
-      - script: echo "$AGENT_MACHINENAME"
-        displayName: 'AGENT_MACHINENAME'
+      - job: plan_destroy
+        pool:
+          name: ${{ parameters.poolName }}
+        displayName: 'Terraform Plan Destroy'
+        timeoutInMinutes: 60
 
-      - task: Cache@2
-        displayName: 'get plan destroy cache'
-        inputs:
-          key: 'terraform | plan_destroy | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
+        steps:
 
-      - script: |
-          ls -al "${{ variables.workingDirectory }}"
-        displayName: 'view directory contents'
+          - script: echo "$AGENT_MACHINENAME"
+            displayName: 'AGENT_MACHINENAME'
 
-      - script: |
-          printf "terraform apply tfplan\n"
-          TF_IN_AUTOMATION=true terraform apply tfplan
-        workingDirectory: '${{ variables.workingDirectory }}'
-        displayName: 'terraform apply (destroy)'
-        env:
-          ARM_USE_MSI: "true"
+          - task: Cache@2
+            displayName: 'get apply cache'
+            inputs:
+              key: 'terraform | apply | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
+
+          - script: |
+              ls -al "${{ variables.workingDirectory }}"
+            displayName: 'view directory contents'
+
+          - script: |
+              printf "terraform plan -destroy -out tfplan\n"
+              TF_IN_AUTOMATION=true terraform plan -destroy -out tfplan
+            workingDirectory: '${{ variables.workingDirectory }}'
+            displayName: 'terraform plan -destroy'
+            env:
+              ARM_USE_MSI: "true"
+
+          - task: Cache@2
+            displayName: 'register apply cache'
+            inputs:
+              key: 'terraform | plan_destroy | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
+              path: $(System.DefaultWorkingDirectory)
+
+  - stage: 'validate_plan_destroy'
+    pool: server
+    displayName: "Validate Destroy"
+
+    jobs:
+
+      - job: waitForValidation
+        displayName: 'Review and approve terraform destroy plan before resuming'
+        timeoutInMinutes: 60
+
+        steps:
+        - task: ManualValidation@0
+          displayName: 'Manually Validate Destroy'
+          timeoutInMinutes: 5
+          inputs:
+            notifyUsers: |
+              example@example.com
+            instructions: 'Please validate the "terraform plan -destroy" step before continuing'
+            onTimeout: 'resume'
+
+  - stage: 'destroy'
+    pool:
+      name: ${{ parameters.poolName }}
+    displayName: "Terraform Destroy"
+
+    jobs:
+
+      - job: destroy
+        pool:
+          name: ${{ parameters.poolName }}
+        displayName: 'Terraform Destroy'
+        timeoutInMinutes: 60
+
+        steps:
+
+          - script: echo "$AGENT_MACHINENAME"
+            displayName: 'AGENT_MACHINENAME'
+
+          - task: Cache@2
+            displayName: 'get plan destroy cache'
+            inputs:
+              key: 'terraform | plan_destroy | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
+
+          - script: |
+              ls -al "${{ variables.workingDirectory }}"
+            displayName: 'view directory contents'
+
+          - script: |
+              printf "terraform apply tfplan\n"
+              TF_IN_AUTOMATION=true terraform apply tfplan
+            workingDirectory: '${{ variables.workingDirectory }}'
+            displayName: 'terraform apply (destroy)'
+            env:
+              ARM_USE_MSI: "true"
