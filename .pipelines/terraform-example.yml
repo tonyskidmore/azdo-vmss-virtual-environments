@@ -82,14 +82,15 @@ stages:
         timeoutInMinutes: 60
 
         steps:
-        - task: ManualValidation@0
-          displayName: 'Manually Validate Plan'
-          timeoutInMinutes: 5
-          inputs:
-            notifyUsers: |
-              example@example.com
-            instructions: 'Please validate the "terraform plan" step before continuing'
-            onTimeout: 'resume'
+
+          - task: ManualValidation@0
+            displayName: 'Manually Validate Plan'
+            timeoutInMinutes: 5
+            inputs:
+              notifyUsers: |
+                example@example.com
+              instructions: 'Please validate the "terraform plan" step before continuing'
+              onTimeout: 'resume'
 
   - stage: 'apply'
     pool:
@@ -184,14 +185,15 @@ stages:
         timeoutInMinutes: 60
 
         steps:
-        - task: ManualValidation@0
-          displayName: 'Manually Validate Destroy'
-          timeoutInMinutes: 5
-          inputs:
-            notifyUsers: |
-              example@example.com
-            instructions: 'Please validate the "terraform plan -destroy" step before continuing'
-            onTimeout: 'resume'
+
+          - task: ManualValidation@0
+            displayName: 'Manually Validate Destroy'
+            timeoutInMinutes: 5
+            inputs:
+              notifyUsers: |
+                example@example.com
+              instructions: 'Please validate the "terraform plan -destroy" step before continuing'
+              onTimeout: 'resume'
 
   - stage: 'destroy'
     pool:
