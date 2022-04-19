@@ -164,7 +164,7 @@ then
   then
     vmss_show=$(az vmss show --resource-group "$AZ_VMSS_RESOURCE_GROUP_NAME" --name "$AZ_VMSS_NAME" --output json)
     vmss_identity=$(echo "$vmss_show" | jq -r '.identity.principalId')
-    roles=( "Contributor" )
+    roles=( "Contributor" "User Access Administrator" )
     for role in "${roles[@]}"
     do
       printf "Configuring $role access for %s VMSS Managed Identity %s on Subscription %s\n" "$AZ_VMSS_NAME" "$vmss_identity" "$ARM_SUBSCRIPTION_ID"
