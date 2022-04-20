@@ -1,1 +1,1 @@
-FROM ghcr.io/tonyskidmore/azure-tools:sha-c43a176
+FROM ghcr.io/tonyskidmore/azure-tools:20220420
