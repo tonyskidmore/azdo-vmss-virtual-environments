@@ -3,6 +3,7 @@
 set -e
 
 # define variables
+start=$(date +%s)
 script_path=$(dirname "$(realpath "$0")")
 export script_path
 echo "script_path: $script_path"
@@ -135,6 +136,8 @@ else
   # patch PowerShell script to remove interactive cleanup
   # https://www.packer.io/docs/commands/build#on-error-cleanup
   display_message info "Patching: $root_path/virtual-environments/scripts/GenerateResourcesAndImage.ps1"
+  # this probably isn't required as I would suspect that running in a pipeline would ignore the packer
+  # option to ask about cleanup.  Leaving it in until I'm sure.
   sed -i 's/-on-error=ask//' "$root_path/virtual-environments/helpers/GenerateResourcesAndImage.ps1"
   # run PowerShell wrapper script to create packer image
   display_message info "Running PowerShell script: $script_path/ve-image-create.ps1"
@@ -185,9 +188,9 @@ else
     --os-state generalized
 fi
 
-display_message info "Found ${#img_versions[*]} current version definitions"
+display_message info "Found ${#img_versions[*]} current VM image version definitions"
 display_message info "Current versions:"
-display_message info "${img_versions[@]}"
+echo "${img_versions[@]}"
 
 # if the image list is empty start at $VE_IMAGES_VERSION_START otherwise increment the last version
 if [[ ${#img_versions[*]} -eq 1 ]] && [[ -z "${img_versions[0]}" ]]
@@ -197,7 +200,7 @@ then
 elif [[ ${#img_versions[*]} -ge 1 ]] && [[ -n "${img_versions[0]}" ]]
 then
   # sort array in reverse version order and get current latest version
-  display_message info "Getting version from az cli output"
+  display_message info "Getting current latest VM image version"
   readarray -t sorted < <(for a in "${img_versions[@]}"; do echo "$a"; done | sort -Vr)
   latest="${sorted[0]}"
   # Fix shell script to increment semversion
@@ -208,11 +211,11 @@ else
   exit 1
 fi
 
-display_message info "new version will be: $version"
+display_message info "New VM image version will be: $version"
 
 if [[ $version =~ ^[0-9]{1,}\.[0-9]{1,}\.[0-9]{1,} ]]
 then
-  display_message info "Validated version format successfully"
+  display_message info "Validated VM image version semver format successfully"
 else
   display_message error "Failed to validate semver for new version"
   exit 1
@@ -228,16 +231,43 @@ az sig image-version create \
   --os-vhd-uri "$osdiskuri" \
   --tags "source_tag=$VE_RELEASE"
 
-# TODO: add image version cleanup
-# if [[ -n "$VE_IMAGES_TO_KEEP" ]] && [[ ${#sorted[*]} -gt $VE_IMAGES_TO_KEEP ]]
-# then
+# VM Image version maintenance
+if [[ -n "$VE_IMAGES_TO_KEEP" ]] && [[ ${#sorted[*]} -ge $VE_IMAGES_TO_KEEP ]]
+then
 
-images_to_keep=("${sorted[@]:0:$VE_IMAGES_TO_KEEP}")
-declare -p images_to_keep
-display_message info "VE_IMAGES_TO_KEEP: $VE_IMAGES_TO_KEEP"
-display_message info "Number of current images: ${#sorted[*]}"
-display_message info "Images found:"
-display_message info "${sorted[@]}"
-display_message info "Images to keep:"
-display_message info "${images_to_keep[@]}"
-# fi
+  # create array of new version and combine that with the sorted array
+  new_version=("$version")
+  all_versions=("${new_version[@]}" "${sorted[@]}" )
+  declare -p all_versions
+
+  # declare and array of the VM Image versions to keep
+  images_to_keep=("${all_versions[@]:0:$VE_IMAGES_TO_KEEP}")
+  declare -p images_to_keep
+
+  display_message info "Number of current images: ${#all_versions[*]}"
+  display_message info "Number of images to keep: $VE_IMAGES_TO_KEEP"
+
+  display_message info "Current VM Image versions:"
+  printf "%s\n" "${all_versions[@]}"
+  display_message info "VM Image versions to retain:"
+  printf "%s\n" "${images_to_keep[@]}"
+
+  # loop through and remove all VM Image versions that are not required
+  for img_ver in "${all_versions[@]}"
+  do
+    display_message info "Checking VM Image version: $img_ver"
+    if array_contains images_to_keep "$img_ver"
+    then
+      display_message info "Retaining VM Image version: $img_ver"
+    else
+      display_message warning "Deleting VM Image version: $img_ver"
+      az sig image-version delete \
+        --resource-group "$AZ_ACG_RESOURCE_GROUP_NAME" \
+        --gallery-name "$AZ_ACG_NAME" \
+        --gallery-image-definition "$VE_IMAGE_DEF" \
+        --gallery-image-version "$img_ver"
+    fi
+  done
+fi
+
+display_message info "Image build script execution completed in $((($(date +%s) - start)/60)) minutes"
