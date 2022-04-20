@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# https://www.shellhacks.com/bash-colors/
+# examples:
+# display_message info "This is an information message"
+# display_message warning "This is a warning message"
+# display_message error "This is an error message"
+function display_message () {
+    local red=$'\e[0;31m'
+    local green=$'\e[0;32m'
+    local yellow=$'\e[0;33m'
+    local normal=$'\e[0m'
+    local level="$1"
+    local message="$2"
+
+    if [[ "$level" == "error" ]]
+    then
+        echo -e "${red}${message}${normal}"
+    elif [[ "$level" == "warning" ]]
+    then
+        echo -e "${yellow}${message}${normal}"
+    elif [[ "$level" == "info" ]]
+    then
+        echo -e "${green}${message}${normal}"
+    else
+        echo -e "${message}"
+    fi
+}
