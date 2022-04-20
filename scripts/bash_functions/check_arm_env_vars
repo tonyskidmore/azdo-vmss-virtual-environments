@@ -7,7 +7,7 @@ function check_arm_env_vars() {
   then
     echo "Azure environment variables not set. Please set these values and re-run the script."
     echo "This should be the values from a Service Principal with Contributor rights to the target subscription e.g.:"
-    echo 'az ad sp create-for-rbac -n "sp-virtual-environments-images" --role Contributor --scopes /subscriptions/00000000-0000-0000-0000-000000000000'
+    echo 'az ad sp create-for-rbac -n "sp-virtual-environments-images" --role Owner --scopes /subscriptions/00000000-0000-0000-0000-000000000000'
     echo "{"
     echo "  appId": "00000000-0000-0000-0000-000000000000",
     echo "  displayName": "sp-virtual-enviroments-images",

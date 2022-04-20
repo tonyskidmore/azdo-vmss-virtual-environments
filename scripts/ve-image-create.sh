@@ -25,7 +25,7 @@ echo "root_path: $root_path"
 check_arm_env_vars
 
 # Set defaults overridable by environment variables
-export AZ_RESOURCE_GROUP_NAME="${AZ_RESOURCE_GROUP_NAME:-rg-ve-images}"
+export AZ_RESOURCE_GROUP_NAME=${AZ_RESOURCE_GROUP_NAME:-rg-ve-images}
 export AZ_LOCATION=${AZ_LOCATION:-uksouth}
 export AZ_ACG_RESOURCE_GROUP_NAME=${AZ_ACG_RESOURCE_GROUP_NAME:-rg-ve-acg-01}
 export AZ_ACG_NAME=${AZ_ACG_NAME:-acg_01}
@@ -229,12 +229,15 @@ az sig image-version create \
   --tags "source_tag=$VE_RELEASE"
 
 # TODO: add image version cleanup
-if [[ -n "$VE_IMAGES_TO_KEEP" ]] && [[ ${#sorted[*]} -gt $VE_IMAGES_TO_KEEP ]]
-then
-  images_to_keep=("${sorted[@]:0:$VE_IMAGES_TO_KEEP}")
-  declare -p images_to_keep
-  display_message info "Images found:"
-  display_message info "${sorted[@]}"
-  display_message info "Images to keep:"
-  display_message info "${images_to_keep[@]}"
-fi
+# if [[ -n "$VE_IMAGES_TO_KEEP" ]] && [[ ${#sorted[*]} -gt $VE_IMAGES_TO_KEEP ]]
+# then
+
+images_to_keep=("${sorted[@]:0:$VE_IMAGES_TO_KEEP}")
+declare -p images_to_keep
+display_message info "VE_IMAGES_TO_KEEP: $VE_IMAGES_TO_KEEP"
+display_message info "Number of current images: ${#sorted[*]}"
+display_message info "Images found:"
+display_message info "${sorted[@]}"
+display_message info "Images to keep:"
+display_message info "${images_to_keep[@]}"
+# fi
