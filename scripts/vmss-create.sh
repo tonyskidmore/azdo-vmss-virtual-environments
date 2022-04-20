@@ -17,6 +17,8 @@ vmss_identity_wait_secs=120
 
 # shellcheck disable=SC1091
 . "$script_path/bash_functions/check_arm_env_vars"
+# shellcheck disable=SC1091
+. "$script_path/bash_functions/display_message"
 
 # end functions
 
@@ -60,11 +62,11 @@ echo "AZ_VMSS_CREATE_RBAC: $AZ_VMSS_CREATE_RBAC"
 echo "AZ_VMSS_CUSTOM_DATA: $AZ_VMSS_CUSTOM_DATA"
 echo "IMG_VERSION_REF: $IMG_VERSION_REF"
 
-echo "Logging into Azure..."
+display_message info "Logging into Azure..."
 az login --service-principal -u "$ARM_CLIENT_ID" -p "$ARM_CLIENT_SECRET" --tenant "$ARM_TENANT_ID"
 az account set --subscription "$ARM_SUBSCRIPTION_ID"
 
-echo "Creating resource group: $AZ_VMSS_RESOURCE_GROUP_NAME"
+display_message info "Creating resource group: $AZ_VMSS_RESOURCE_GROUP_NAME"
 az group create \
   --name "$AZ_VMSS_RESOURCE_GROUP_NAME" \
   --location "$AZ_LOCATION"
@@ -98,11 +100,12 @@ else
   params=( "${std_params[@]}" )
 fi
 
-printf "Running: az vmss create --load-balancer \"\" %s\n" "${params[*]}"
-echo "Creating vmss: $AZ_VMSS_NAME"
+display_message info "Creating vmss: $AZ_VMSS_NAME"
+display_message info "Running: az vmss create --load-balancer \"\" ${params[*]}"
+
 vmss=$(az vmss create --load-balancer "" "${params[@]}")
 
-printf "vmss:\n %s\n" "$vmss"
+printf "%s\n" "$vmss"
 
 az resource wait --exists --ids "/subscriptions/$ARM_SUBSCRIPTION_ID/resourceGroups/$AZ_VMSS_RESOURCE_GROUP_NAME/providers/Microsoft.Compute/virtualMachineScaleSets/$AZ_VMSS_NAME"
 
@@ -112,16 +115,17 @@ vmss_identity=$(echo "$vmss_show" | jq -r '.identity.principalId')
 
 if [[ $vmss_boot_diags_enabled != "true" ]]
 then
-  echo "Enabling boot diagnostics on $AZ_VMSS_NAME"
+  display_message info "Enabling boot diagnostics on $AZ_VMSS_NAME"
   az vmss update \
     --name "$AZ_VMSS_NAME" \
     --resource-group "$AZ_VMSS_RESOURCE_GROUP_NAME" \
     --set virtualMachineProfile.diagnosticsProfile='{"bootDiagnostics": {"Enabled" : "True"}}'
 else
-  echo "Boot diagnostics for $AZ_VMSS_NAME already enabled"
+  display_message warning "Boot diagnostics for $AZ_VMSS_NAME already enabled"
 fi
 
-echo "Enabling vmss custom script extension on $AZ_VMSS_NAME"
+# TODO: make this optional and variables for script
+display_message info "Enabling vmss custom script extension on $AZ_VMSS_NAME"
 # https://docs.microsoft.com/en-us/azure/devops/pipelines/agents/scale-set-agents?view=azure-devops#customizing-virtual-machine-startup-via-the-custom-script-extension
 az vmss extension set \
 --vmss-name "$AZ_VMSS_NAME" \
@@ -137,13 +141,13 @@ az vmss extension set \
 
 if [[ "$AZ_VMSS_MANAGED_IDENTITY" == "true" ]] && [[ "$vmss_identity" == "null" ]]
 then
-  echo "Configuring managed identity for $AZ_VMSS_NAME"
+  display_message info "Configuring managed identity for $AZ_VMSS_NAME"
   az vmss update \
     --name "$AZ_VMSS_NAME" \
     --resource-group "$AZ_VMSS_RESOURCE_GROUP_NAME" \
     --set identity.type="SystemAssigned"
 else
-  echo "Not assigning a new managed identity for $AZ_VMSS_NAME"
+  display_message warning "Not assigning a new managed identity for $AZ_VMSS_NAME"
 fi
 
 # Assign a managed identity access to a resource using Azure CLI
@@ -151,7 +155,7 @@ fi
 if [[ "$AZ_VMSS_MANAGED_IDENTITY" == "true" ]] && [[ $AZ_VMSS_CREATE_RBAC == "true" ]]
 then
   # wait until the identity property is present, will return "" if found
-  echo "Waiting for managed identity for $AZ_VMSS_NAME, timeout after $vmss_identity_wait_secs seconds"
+  display_message info "Waiting for managed identity for $AZ_VMSS_NAME, timeout after $vmss_identity_wait_secs seconds"
   identity=$(az resource wait \
              --name "$AZ_VMSS_NAME" \
              --resource-group "$AZ_VMSS_RESOURCE_GROUP_NAME" \
@@ -167,7 +171,7 @@ then
     roles=( "Contributor" "User Access Administrator" )
     for role in "${roles[@]}"
     do
-      printf "Configuring $role access for %s VMSS Managed Identity %s on Subscription %s\n" "$AZ_VMSS_NAME" "$vmss_identity" "$ARM_SUBSCRIPTION_ID"
+      display_message info "Configuring $role access for $AZ_VMSS_NAME VMSS Managed Identity $vmss_identity on Subscription $ARM_SUBSCRIPTION_ID"
       az role assignment create \
         --assignee-object-id "$vmss_identity" \
         --assignee-principal-type ServicePrincipal \
@@ -175,8 +179,8 @@ then
         --scope "/subscriptions/$ARM_SUBSCRIPTION_ID"
     done
   else
-    echo "No identity found for $AZ_VMSS_NAME"
+    display_message warning "No identity found for $AZ_VMSS_NAME"
   fi
 else
-  echo "Not assigning RBAC for $AZ_VMSS_NAME identity"
+  display_message warning "Not assigning RBAC for $AZ_VMSS_NAME identity"
 fi

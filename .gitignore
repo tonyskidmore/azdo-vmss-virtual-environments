@@ -4,6 +4,9 @@
 packer-log.txt
 virtual-environments/
 
+# ADO pool generated JSON
+scripts/params.json
+
 # Local .terraform directories
 **/.terraform/*
 

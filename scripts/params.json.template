@@ -1,0 +1,16 @@
+{
+  "agentInteractiveUI": false,
+  "azureId": "",
+  "desiredIdle": 0,
+  "desiredSize": 0,
+  "maxCapacity": 2,
+  "maxSavedNodeCount": 0,
+  "offlineSince": "",
+  "osType": "linux",
+  "recycleAfterEachUse": false,
+  "serviceEndpointId": "",
+  "serviceEndpointScope": "",
+  "sizingAttempts": 0,
+  "state": "online",
+  "timeToLiveMinutes": 30
+}

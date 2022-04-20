@@ -1,4 +1,3 @@
-Write-Output "Running PowerShell script: $MyInvocation.MyCommand.Path"
 Write-Output "script_path=$env:script_path"
 Write-Output "root_path=$env:root_path"
 
@@ -14,6 +13,5 @@ $params = @{
   AzureClientSecret = "$env:ARM_CLIENT_SECRET"
   AzureTenantId = "$env:ARM_TENANT_ID"
 }
-
 
 GenerateResourcesAndImage @params -Force -RestrictToAgentIpAddress:$true

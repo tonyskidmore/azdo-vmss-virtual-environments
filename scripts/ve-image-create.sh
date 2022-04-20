@@ -81,7 +81,7 @@ then
   git -C "$root_path/virtual-environments" checkout "$VE_RELEASE"
 elif [[ "${version_array[1]}" == "latest" ]]
 then
-  display_message info"VE_RELEASE wants the latest tag"
+  display_message info "VE_RELEASE wants the latest tag"
   git clone "$VE_REPO" "$root_path/virtual-environments"
   readarray -t tags <<< "$(git -C "$root_path/virtual-environments" tag --list --sort=-committerdate "${version_array[0]}/*")"
   declare -p tags
