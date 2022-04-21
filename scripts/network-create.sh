@@ -54,7 +54,6 @@ vnet_query=("network" "vnet" "list" \
 display_message info "Running: az ${vnet_query[*]}"
 vnet_result="$(az "${vnet_query[@]}")"
 vnet_query_name=$(echo "$vnet_result" | jq -r '.[].name')
-display_message info "Running: az ${vnet_query[*]}"
 display_message info "vnet query found:"
 printf "%s\n" "$vnet_query_name"
 
