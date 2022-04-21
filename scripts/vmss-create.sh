@@ -41,6 +41,9 @@ export AZ_VMSS_INSTANCE_COUNT=${AZ_VMSS_INSTANCE_COUNT:-0}
 export AZ_VMSS_MANAGED_IDENTITY=${AZ_VMSS_MANAGED_IDENTITY:-true}
 export AZ_VMSS_CREATE_RBAC=${AZ_VMSS_CREATE_RBAC:-true}
 export AZ_VMSS_CUSTOM_DATA=${AZ_VMSS_CUSTOM_DATA:-true}
+export AZ_VMSS_EXT_CSE=${AZ_VMSS_EXT_CSE:-true}
+export AZ_VMSS_EXT_CSE_URI=${AZ_VMSS_EXT_CSE_URI:-https://raw.githubusercontent.com/tonyskidmore/azurerm-vmss-cse/main/cse-vmss-startup.sh}
+export AZ_VMSS_EXT_CSE_CMD=${AZ_VMSS_EXT_CSE_CMD:-bash ./cse-vmss-startup.sh}
 export IMG_VERSION_REF="/subscriptions/$ARM_SUBSCRIPTION_ID/resourceGroups/$AZ_ACG_RESOURCE_GROUP_NAME/providers/Microsoft.Compute/galleries/$AZ_ACG_NAME/images/$AZ_ACG_DEF/versions/$AZ_ACG_VERSION"
 
 echo "AZ_ACG_NAME: $AZ_ACG_NAME"
@@ -60,6 +63,9 @@ echo "AZ_VMSS_INSTANCE_COUNT: $AZ_VMSS_INSTANCE_COUNT"
 echo "AZ_VMSS_MANAGED_IDENTITY: $AZ_VMSS_MANAGED_IDENTITY"
 echo "AZ_VMSS_CREATE_RBAC: $AZ_VMSS_CREATE_RBAC"
 echo "AZ_VMSS_CUSTOM_DATA: $AZ_VMSS_CUSTOM_DATA"
+echo "AZ_VMSS_EXT_CSE: $AZ_VMSS_EXT_CSE"
+echo "AZ_VMSS_EXT_CSE_URI: $AZ_VMSS_EXT_CSE_URI"
+echo "AZ_VMSS_EXT_CSE_CMD: $AZ_VMSS_EXT_CSE_CMD"
 echo "IMG_VERSION_REF: $IMG_VERSION_REF"
 
 display_message info "Logging into Azure..."
@@ -124,16 +130,22 @@ else
   display_message warning "Boot diagnostics for $AZ_VMSS_NAME already enabled"
 fi
 
-# TODO: make this optional and variables for script
-display_message info "Enabling vmss custom script extension on $AZ_VMSS_NAME"
-# https://docs.microsoft.com/en-us/azure/devops/pipelines/agents/scale-set-agents?view=azure-devops#customizing-virtual-machine-startup-via-the-custom-script-extension
-az vmss extension set \
---vmss-name "$AZ_VMSS_NAME" \
---resource-group "$AZ_VMSS_RESOURCE_GROUP_NAME" \
---name CustomScript \
---version 2.0 \
---publisher Microsoft.Azure.Extensions \
---settings '{ "fileUris": ["https://raw.githubusercontent.com/tonyskidmore/azurerm-vmss-cse/main/cse-vmss-startup.sh"], "commandToExecute": "bash ./cse-vmss-startup.sh" }'
+
+if [[ "$AZ_VMSS_EXT_CSE" == "true" ]]
+then
+  display_message info "Enabling vmss custom script extension on $AZ_VMSS_NAME"
+  settings="{ \"fileUris\": [\"$AZ_VMSS_EXT_CSE_URI\"], \"commandToExecute\": \"$AZ_VMSS_EXT_CSE_CMD\" }"
+  # https://docs.microsoft.com/en-us/azure/devops/pipelines/agents/scale-set-agents?view=azure-devops#customizing-virtual-machine-startup-via-the-custom-script-extension
+  az vmss extension set \
+  --vmss-name "$AZ_VMSS_NAME" \
+  --resource-group "$AZ_VMSS_RESOURCE_GROUP_NAME" \
+  --name CustomScript \
+  --version 2.0 \
+  --publisher Microsoft.Azure.Extensions \
+  --settings "$settings"
+else
+  display_message warning "Not enabling vmss custom script extension on $AZ_VMSS_NAME"
+fi
 
 
 # Configure managed identities for Azure resources on a virtual machine scale set using Azure CLI
