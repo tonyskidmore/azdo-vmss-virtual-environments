@@ -66,6 +66,7 @@ stages:
               echo $PATH
               echo "validate that /opt/pipx_bin exists in $PATH"
               echo $PATH | grep -o "/opt/pipx_bin"
+              ls -alt /
             displayName: 'issue 3461 test'
 
           - script: |
