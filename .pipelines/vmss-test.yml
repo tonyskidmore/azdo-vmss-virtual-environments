@@ -98,7 +98,15 @@ stages:
 
           - script: |
               cat /agent/.agent
-            displayName: 'dump .agent'
+            displayName: '/agent/.agent'
+
+          - script: |
+              cat /agent/.path
+            displayName: '/agent/.path'
+
+          - script: |
+              cat /agent/.env
+            displayName: '/agent/.env'
 
           - script: |
               # https://docs.microsoft.com/en-us/azure/virtual-machines/linux/instance-metadata-service?tabs=linux
