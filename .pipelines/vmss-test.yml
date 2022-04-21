@@ -32,6 +32,7 @@ stages:
     jobs:
 
       - job: test
+        timeoutInMinutes: 30
         workspace:
           clean: all
 
