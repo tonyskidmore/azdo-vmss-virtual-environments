@@ -30,6 +30,8 @@ export ADO_PROJECT_DESC=${ADO_PROJECT_DESC:-VMSS Agents}
 export ADO_PROJECT_PROCESS=${ADO_PROJECT_PROCESS:-Basic}
 export ADO_PROJECT_VISIBILITY=${ADO_PROJECT_VISIBILITY:-private}
 export ADO_SERVICE_CONNECTION=${ADO_SERVICE_CONNECTION:-ve-vmss}
+export ADO_REPO=${ADO_REPO:-ve-vmss}
+export ADO_REPO_SOURCE=${ADO_REPO:-https://github.com/tonyskidmore/azdo-vmss-virtual-environments.git}
 export AZ_VMSS_RESOURCE_GROUP_NAME=${AZ_VMSS_RESOURCE_GROUP_NAME:-rg-vmss-azdo-agents-01}
 export AZ_VMSS_NAME=${AZ_VMSS_NAME:-vmss-azdo-agents-01}
 
@@ -49,8 +51,12 @@ echo "ADO_POOL_NAME: $ADO_POOL_NAME"
 echo "ADO_POOL_AUTH_ALL: $ADO_POOL_AUTH_ALL"
 echo "ADO_POOL_AUTO_PROVISION: $ADO_POOL_AUTO_PROVISION"
 echo "ADO_PROJECT: $ADO_PROJECT"
+echo "ADO_PROJECT_DESC: $ADO_PROJECT_DESC"
+echo "ADO_PROJECT_PROCESS: $ADO_PROJECT_PROCESS"
 echo "ADO_PROJECT_VISIBILITY: $ADO_PROJECT_VISIBILITY"
 echo "ADO_SERVICE_CONNECTION: $ADO_SERVICE_CONNECTION"
+echo "ADO_REPO: $ADO_REPO"
+echo "ADO_REPO_SOURCE: $ADO_REPO_SOURCE"
 echo "AZ_VMSS_RESOURCE_GROUP_NAME: $AZ_VMSS_RESOURCE_GROUP_NAME"
 echo "AZ_VMSS_NAME: $AZ_VMSS_NAME"
 
@@ -103,6 +109,32 @@ az devops service-endpoint azurerm create \
   --project "$ADO_PROJECT" \
   --organization "$ADO_ORG"
 fi
+
+display_message info "Get Azure DevOps repo list"
+ado_repo_list=$(az repos list \
+  --project "$ADO_PROJECT" \
+  --organization "$ADO_ORG" \
+  --output json)
+
+readarray -t ado_repos <<< "$(echo "$ado_repo_list" | jq -r '.[].name')"
+declare -p ado_repos
+
+if array_contains ado_repos "$ADO_REPO"
+then
+  display_message info "Azure DevOps repo $ADO_REPO already exists"
+else
+  display_message info "Creating Azure DevOps repo $ADO_REPO"
+  az repos create \
+    --name "$ADO_REPO" \
+    --project "$ADO_PROJECT" \
+    --organization "$ADO_ORG"
+fi
+
+az repos import create --git-source-url $ADO_REPO_SOURCE" \
+  --project "$ADO_PROJECT" \
+  --organization "$ADO_ORG" \
+  --repository "$ADO_REPO"
+
 
 exit 0
 
