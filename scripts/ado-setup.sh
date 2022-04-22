@@ -17,32 +17,63 @@ echo "root_path: $root_path"
 
 # end functions
 
+check_arm_env_vars
+
 # Set defaults overridable by environment variables
-export ADO_POOL_NAME=${ADO_POOL_NAME:-vmss}
+export ADO_POOL_NAME=${ADO_POOL_NAME:-ve-vmss}
 export ADO_POOL_AUTH_ALL=${ADO_POOL_AUTH_ALL:-True}
 export ADO_POOL_AUTO_PROVISION=${ADO_POOL_AUTO_PROVISION:-False}
+export ADO_PROJECT=${ADO_PROJECT:-ve-vmss}
+export ADO_PROJECT_DESC=${ADO_PROJECT_DESC:-VMSS Agents}
+export ADO_PROJECT_PROCESS=${ADO_PROJECT_PROCESS:-basic}
+export ADO_PROJECT_VISIBILITY=${ADO_PROJECT_VISIBILITY:-private}
+export ADO_SERVICE_CONNECTION=${ADO_SERVICE_CONNECTION:-ve-vmss}
+export AZ_VMSS_RESOURCE_GROUP_NAME=${AZ_VMSS_RESOURCE_GROUP_NAME:-rg-vmss-azdo-agents-01}
+export AZ_VMSS_NAME=${AZ_VMSS_NAME:-vmss-azdo-agents-01}
 
-echo "ADO_POOL_NAME: $ADO_POOL_NAME"
-echo "ADO_POOL_AUTH_ALL: $ADO_POOL_AUTH_ALL"
-echo "ADO_POOL_AUTO_PROVISION: $ADO_POOL_AUTO_PROVISION"
 
-if [[ -z $ADO_TOKEN || -z $ADO_ORG || -z $ADO_PROJECT || -z $ADO_SERVICE_CONNECTION || -z $AZURE_VMSS_ID ]]
+if [[ -z $AZURE_DEVOPS_EXT_PAT || -z $ADO_ORG ]]
 then
-  # AZURE_VMSS_ID is the resource ID of the target VMSS
   echo "Required environment variables not set. Please set these values and re-run the script."
   echo "For example:"
   echo " export ADO_TOKEN=7xoaw8lo9vzwpaalfqf6d723i3lk88yslog4c42eby55ducploga"
-  echo "export ADO_ORG=my-ado-org"
-  echo "export ADO_PROJECT=vmss"
-  echo "export ADO_SERVICE_CONNECTION=vmss"
-  echo "export AZURE_VMSS_ID=/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-vmss-azdo-agents-01/providers/Microsoft.Compute/virtualMachineScaleSets/vmss-azdo-agents-01"
+  echo "export ADO_ORG=https://dev.azure.com/my-ado-org"
+  # echo "export AZURE_VMSS_ID=/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-vmss-azdo-agents-01/providers/Microsoft.Compute/virtualMachineScaleSets/vmss-azdo-agents-01"
   echo "Note: The preceding space on the line above so that the command does not appear in command history"
   exit 1
 fi
 
-# Azure DevOps REST API does not need teh az cli but we use it for helper functionality
-check_arm_env_vars
+echo "ADO_POOL_NAME: $ADO_POOL_NAME"
+echo "ADO_POOL_AUTH_ALL: $ADO_POOL_AUTH_ALL"
+echo "ADO_POOL_AUTO_PROVISION: $ADO_POOL_AUTO_PROVISION"
+echo "ADO_PROJECT: $ADO_PROJECT"
+echo "ADO_PROJECT_VISIBILITY: $ADO_PROJECT_VISIBILITY"
+echo "ADO_SERVICE_CONNECTION: $ADO_SERVICE_CONNECTION"
+echo "AZ_VMSS_RESOURCE_GROUP_NAME: $AZ_VMSS_RESOURCE_GROUP_NAME"
+echo "AZ_VMSS_NAME: $AZ_VMSS_NAME"
 
+display_message info "Get Azure DevOps current project list"
+ado_project_list=$(az devops project list \
+  --organization "$ADO_ORG" \
+  --output json)
+
+readarray -t ado_projects <<< "$(echo "$ado_project_list" | jq -r '.value[].name')"
+declare -p ado_projects
+
+if array_contains ado_projects "$ADO_PROJECT"
+then
+  display_message info "Azure DevOps project $ADO_PROJECT already exists"
+else
+  display_message info "Creating Azure DevOps project $ADO_PROJECT"
+  az devops project create \
+    --name "$ADO_PROJECT" \
+    --description "$ADO_PROJECT_DESC" \
+    --visibility "$ADO_PROJECT_VISIBILITY" \
+    --process "$ADO_PROJECT_PROCESS"
+fi
+
+
+######## original script
 # https://docs.microsoft.com/en-us/rest/api/azure/devops/core/Projects/List?view=azure-devops-rest-7.1
 url="https://dev.azure.com/$ADO_ORG/_apis/projects?api-version=7.1-preview.1"
 project_json=$(curl -s -u ":$ADO_TOKEN" "$url")
