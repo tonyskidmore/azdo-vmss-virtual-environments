@@ -189,7 +189,7 @@ then
   echo "$url"
 
   display_message info "Creating Azure DevOps pool: $ADO_POOL_NAME"
-  new_pool=$(curl -s -X POST -H "Content-Type: application/json" -d @"$script_path/params.json" -u ":$ADO_TOKEN" "$url" )
+  new_pool=$(curl -s -X POST -H "Content-Type: application/json" -d @"$script_path/params.json" -u ":$AZURE_DEVOPS_EXT_PAT" "$url" )
   echo "$new_pool"
 else
   display_message info "Azure DevOps pool $ADO_POOL_NAME already exists"
