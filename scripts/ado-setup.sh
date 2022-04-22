@@ -130,60 +130,73 @@ else
     --organization "$ADO_ORG"
 fi
 
+#TODO: check if repo is empty before trying to import
+display_message info "Import repo $ADO_REPO_SOURCE into $ADO_REPO"
 az repos import create --git-source-url "$ADO_REPO_SOURCE" \
   --project "$ADO_PROJECT" \
   --organization "$ADO_ORG" \
   --repository "$ADO_REPO"
 
-
-exit 0
-
-######## original script
-# https://docs.microsoft.com/en-us/rest/api/azure/devops/core/Projects/List?view=azure-devops-rest-7.1
-url="https://dev.azure.com/$ADO_ORG/_apis/projects?api-version=7.1-preview.1"
-project_json=$(curl -s -u ":$ADO_TOKEN" "$url")
-
-project_count=$(echo "$project_json" | jq '.count')
-
-display_message info "Found $project_count projects"
-
-# get specific project details from the project list
-project=$(echo "$project_json" | jq '.value | .[] | select(.name==env.ADO_PROJECT)')
-display_message info "project: $project"
+ado_pool_list=$(az pipelines pool list \
+  --organization "$ADO_ORG" \
+  --output json)
 
 
-# project the ID will be used for elasticpool serviceEndpointScope
-project_id=$(echo "$project" | jq -r '.id')
-display_message info "id for project $ADO_PROJECT: $project_id"
 
-# https://docs.microsoft.com/en-us/rest/api/azure/devops/serviceEndpoint/endpoints/get-service-endpoints-by-names?view=azure-devops-rest-7.1
-url="https://dev.azure.com/$ADO_ORG/$ADO_PROJECT/_apis/serviceendpoint/endpoints?endpointNames=$ADO_SERVICE_CONNECTION&api-version=7.1-preview.4"
-endpoints=$(curl -s -u ":$ADO_TOKEN" "$url")
-endpoint_id=$(echo "$endpoints" | jq -r '.value | .[].id')
-display_message info "endpoint_id: $endpoint_id"
+project_id=$(echo "$ado_project_list" | jq -r --arg name "$ADO_PROJECT" '.value[] | select (.name==$name) | .id')
+endpoint_id=$(echo "$ado_endpoint_list" | jq -r --arg name "$ADO_SERVICE_CONNECTION" '.[] | select (.name==$name) | .id')
+pool_id=$(echo "$ado_pool_list" | jq -r --arg name "$ADO_POOL_NAME" '.[] | select (.name==$name) | .id')
 
+display_message info "Obtained IDs"
+printf "project_id: %\n" "$project_id"
+printf "endpoint_id: %\n" "$endpoint_id"
+printf "pool_id: %\n" "$pool_id"
 
-# https://docs.microsoft.com/en-us/rest/api/azure/devops/distributedtask/elasticpools/list?view=azure-devops-rest-7.1
-url="https://dev.azure.com/$ADO_ORG/_apis/distributedtask/elasticpools?api-version=7.1-preview.1"
-elastic_pools=$(curl -s -u ":$ADO_TOKEN" "$url")
-display_message info "existing elasticspools:"
-echo "$elastic_pools"
+display_message info "Logging into Azure..."
+az login --service-principal -u "$ARM_CLIENT_ID" -p "$ARM_CLIENT_SECRET" --tenant "$ARM_TENANT_ID"
+az account set --subscription "$ARM_SUBSCRIPTION_ID"
 
-# copy template and patch params.json with values
-display_message info "Creating $script_path/params.json"
-cp "$script_path/params.json.template" "$script_path/params.json"
-sed -i "s|\"azureId\":.*|\"azureId\": \"$AZURE_VMSS_ID\",|" "$script_path/params.json"
-sed -i "s|\"serviceEndpointId\":.*|\"serviceEndpointId\": \"$endpoint_id\",|" "$script_path/params.json"
-sed -i "s|\"serviceEndpointScope\":.*|\"serviceEndpointScope\": \"$project_id\",|" "$script_path/params.json"
-echo "$script_path/params.json"
-cat "$script_path/params.json"
+display_message info "Getting VMSS ID"
+az_vmss_id=$(az vmss show \
+  --resource-group "$AZ_VMSS_RESOURCE_GROUP_NAME" \
+  --name "$AZ_VMSS_NAME" \
+  --query 'id' \
+  --output tsv)
 
-# https://docs.microsoft.com/en-us/rest/api/azure/devops/distributedtask/elasticpools/create?view=azure-devops-rest-7.1
-# POST https://dev.azure.com/{organization}/_apis/distributedtask/elasticpools?poolName={poolName}&authorizeAllPipelines={authorizeAllPipelines}&autoProvisionProjectPools={autoProvisionProjectPools}&projectId={projectId}&api-version=7.1-preview.1
-url="https://dev.azure.com/$ADO_ORG/_apis/distributedtask/elasticpools?poolName=$ADO_POOL_NAME&authorizeAllPipelines=$ADO_POOL_AUTH_ALL&autoProvisionProjectPools=$ADO_POOL_AUTO_PROVISION&projectId=$project_id&api-version=7.1-preview.1"
-display_message info "Constructed elastic pool create url:"
-echo "$url"
+printf "az_vmss_id: %\n" "$az_vmss_id"
 
-display_message info "Creating Azure DevOps pool: $ADO_POOL_NAME"
-new_pool=$(curl -s -X POST -H "Content-Type: application/json" -d @"$script_path/params.json" -u ":$ADO_TOKEN" "$url" )
-echo "$new_pool"
+if [[ -z "$pool_id" ]]
+then
+  display_message info "Creating Azure DevOps pool $ADO_POOL_NAME"
+  # copy template and patch params.json with values
+  display_message info "Creating $script_path/params.json"
+  cp "$script_path/params.json.template" "$script_path/params.json"
+  sed -i "s|\"azureId\":.*|\"azureId\": \"$az_vmss_id\",|" "$script_path/params.json"
+  sed -i "s|\"serviceEndpointId\":.*|\"serviceEndpointId\": \"$endpoint_id\",|" "$script_path/params.json"
+  sed -i "s|\"serviceEndpointScope\":.*|\"serviceEndpointScope\": \"$project_id\",|" "$script_path/params.json"
+  echo "$script_path/params.json"
+  cat "$script_path/params.json"
+
+  # https://docs.microsoft.com/en-us/rest/api/azure/devops/distributedtask/elasticpools/create?view=azure-devops-rest-7.1
+  # POST https://dev.azure.com/{organization}/_apis/distributedtask/elasticpools?poolName={poolName}&authorizeAllPipelines={authorizeAllPipelines}&autoProvisionProjectPools={autoProvisionProjectPools}&projectId={projectId}&api-version=7.1-preview.1
+  url="https://dev.azure.com/$ADO_ORG/_apis/distributedtask/elasticpools?poolName=$ADO_POOL_NAME&authorizeAllPipelines=$ADO_POOL_AUTH_ALL&autoProvisionProjectPools=$ADO_POOL_AUTO_PROVISION&projectId=$project_id&api-version=7.1-preview.1"
+  display_message info "Constructed elastic pool create url:"
+  echo "$url"
+
+  display_message info "Creating Azure DevOps pool: $ADO_POOL_NAME"
+  new_pool=$(curl -s -X POST -H "Content-Type: application/json" -d @"$script_path/params.json" -u ":$ADO_TOKEN" "$url" )
+  echo "$new_pool"
+else
+  display_message info "Azure DevOps pool $ADO_POOL_NAME already exists"
+fi
+
+#TODO: tidy up and make all pipelines
+az pipelines create \
+  --name 'vmss-test' \
+  --project "$ADO_PROJECT" \
+  --organization "$ADO_ORG" \
+  --description 'Test Azure DevOps VMSS integration' \
+  --yml-path '/.pipelines/vmss-test.yml' \
+  --organization "$ADO_ORG" \
+  --repository "$ADO_REPO" \
+  --repository-type tfsgit

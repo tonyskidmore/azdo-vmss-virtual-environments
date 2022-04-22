@@ -9,7 +9,7 @@ parameters:
     default: 0
   - name: poolName
     type: string
-    default: 'vmss'
+    default: 've-vmss'
 
 
 trigger: none
@@ -66,11 +66,11 @@ stages:
               echo $PATH
               echo "validate that /opt/pipx_bin exists in $PATH"
               echo $PATH | grep -o "/opt/pipx_bin"
-              echo "*** / listing"
-              ls -alt /
-              echo "*** /agent listing"
-              ls -alt /agent
             displayName: 'issue 3461 test'
+
+          - script: |
+              cat /agent/.path
+            displayName: '/agent/.path'
 
           - script: |
               ansible --version
@@ -91,27 +91,6 @@ stages:
           - script: |
               sudo whoami
             displayName: 'whoami now'
-
-          - script: |
-              printenv
-            displayName: 'debug environment'
-
-          - script: |
-              cat /agent/.agent
-            displayName: '/agent/.agent'
-
-          - script: |
-              cat /agent/.path
-            displayName: '/agent/.path'
-
-          - script: |
-              cat /agent/.env
-            displayName: '/agent/.env'
-
-          - script: |
-              # https://docs.microsoft.com/en-us/azure/virtual-machines/linux/instance-metadata-service?tabs=linux
-              curl -H Metadata:true "http://169.254.169.254/metadata/instance?api-version=2021-12-13" | jq
-            displayName: 'get metadata'
 
           - ${{ if gt(parameters.wait, 0) }}:
               - script: |
