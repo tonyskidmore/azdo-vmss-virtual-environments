@@ -11,6 +11,8 @@ echo "root_path: $root_path"
 # functions
 
 # shellcheck disable=SC1091
+. "$script_path/bash_functions/array_contains"
+# shellcheck disable=SC1091
 . "$script_path/bash_functions/check_arm_env_vars"
 # shellcheck disable=SC1091
 . "$script_path/bash_functions/display_message"
@@ -25,7 +27,7 @@ export ADO_POOL_AUTH_ALL=${ADO_POOL_AUTH_ALL:-True}
 export ADO_POOL_AUTO_PROVISION=${ADO_POOL_AUTO_PROVISION:-False}
 export ADO_PROJECT=${ADO_PROJECT:-ve-vmss}
 export ADO_PROJECT_DESC=${ADO_PROJECT_DESC:-VMSS Agents}
-export ADO_PROJECT_PROCESS=${ADO_PROJECT_PROCESS:-basic}
+export ADO_PROJECT_PROCESS=${ADO_PROJECT_PROCESS:-Basic}
 export ADO_PROJECT_VISIBILITY=${ADO_PROJECT_VISIBILITY:-private}
 export ADO_SERVICE_CONNECTION=${ADO_SERVICE_CONNECTION:-ve-vmss}
 export AZ_VMSS_RESOURCE_GROUP_NAME=${AZ_VMSS_RESOURCE_GROUP_NAME:-rg-vmss-azdo-agents-01}
