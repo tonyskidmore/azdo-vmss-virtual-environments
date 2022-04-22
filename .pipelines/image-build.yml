@@ -34,7 +34,7 @@ resources:
   containers:
     - container: azure-tools
       image: '${{ variables.containerImage }}'
-      options: "--name rover-container"
+      options: "--user 0:0 --name azure-tools"
 
 jobs:
   - job: imagebuild
