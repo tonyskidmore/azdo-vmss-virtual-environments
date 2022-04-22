@@ -148,9 +148,9 @@ endpoint_id=$(echo "$ado_endpoint_list" | jq -r --arg name "$ADO_SERVICE_CONNECT
 pool_id=$(echo "$ado_pool_list" | jq -r --arg name "$ADO_POOL_NAME" '.[] | select (.name==$name) | .id')
 
 display_message info "Obtained IDs"
-printf "project_id: %\n" "$project_id"
-printf "endpoint_id: %\n" "$endpoint_id"
-printf "pool_id: %\n" "$pool_id"
+printf "project_id: %s\n" "$project_id"
+printf "endpoint_id: %s\n" "$endpoint_id"
+printf "pool_id: %s\n" "$pool_id"
 
 display_message info "Logging into Azure..."
 az login --service-principal -u "$ARM_CLIENT_ID" -p "$ARM_CLIENT_SECRET" --tenant "$ARM_TENANT_ID"
