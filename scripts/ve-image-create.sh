@@ -231,6 +231,7 @@ az sig image-version create \
   --os-vhd-uri "$osdiskuri" \
   --tags "source_tag=$VE_RELEASE"
 
+# TODO: validate that the image currently being used by the VMSS is not removed
 # VM Image version maintenance
 if [[ -n "$VE_IMAGES_TO_KEEP" ]] && [[ ${#sorted[*]} -ge $VE_IMAGES_TO_KEEP ]]
 then
