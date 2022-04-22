@@ -6,7 +6,8 @@
 
 ### Overview
 
-This repository contains scripts and artifacts to create Azure DevOps self-hosted agents running on [Azure Virtual Machine Scale Sets](https://docs.microsoft.com/en-us/azure/virtual-machine-scale-sets/overview), supporting the same [virtual-environments](https://github.com/actions/virtual-environments) VM images used by [Microsoft-hosted agents](https://docs.microsoft.com/en-us/azure/devops/pipelines/agents/hosted).  
+This repository contains scripts and artifacts to create Azure DevOps self-hosted agents running on [Azure Virtual Machine Scale Sets](https://docs.microsoft.com/en-us/azure/virtual-machine-scale-sets/overview).
+Using the same [virtual-environments](https://github.com/actions/virtual-environments) VM images used by [Microsoft-hosted agents](https://docs.microsoft.com/en-us/azure/devops/pipelines/agents/hosted).  
 
 Currently only the Ubuntu 20.04 Linux agent is supported.
 
