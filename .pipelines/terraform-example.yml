@@ -8,7 +8,11 @@ parameters:
 
   - name: poolName
     type: string
-    default: 'vmss'
+    default: 've-vmss'
+  - name: backendServiceArm
+    type: string
+    default: 've-vmss'
+    displayName: "AzureRm Service Connection Name"
 
 variables:
   - group: azure
@@ -37,12 +41,24 @@ stages:
           - script: echo "$AGENT_MACHINENAME"
             displayName: 'AGENT_MACHINENAME'
 
-          - script: |
-              env
-            workingDirectory: '${{ variables.workingDirectory }}'
-            displayName: 'env'
-            env:
-              ARM_USE_MSI: "true"
+          - task: AzureCLI@2
+            inputs:
+              scriptType: bash
+              scriptLocation: inlineScript
+              addSpnToEnvironment: true
+              azureSubscription: '${{ parameters.backendServiceArm }}'
+              inlineScript: |
+                set -e
+
+                subscription_id=$(az account show --query 'id' --output tsv)
+                tenant_id=$(az account show --query 'tenantId' --output tsv)
+
+                echo "##vso[task.setvariable variable=ARM_SUBSCRIPTION_ID;]$subscription_id"
+                echo "##vso[task.setvariable variable=ARM_TENANT_ID;]$tenant_id"
+                echo "##vso[task.setvariable variable=subscription_id;isOutput=true]$subscription_id"
+                echo "##vso[task.setvariable variable=tenant_id;isOutput=true]$tenant_id"
+            displayName: 'Set azure environment variables from service connection for ARM_USE_MSI'
+            name: terraform_init
 
           - script: |
               printf "terraform init\n"
@@ -126,6 +142,8 @@ stages:
             displayName: 'terraform apply'
             env:
               ARM_USE_MSI: "true"
+              ARM_SUBSCRIPTION_ID: dependencies.init_plan.outputs['init_plan.terraform_init.subscription_id']
+              ARM_TENANT_ID: dependencies.init_plan.outputs['init_plan.terraform_init.tenant_id']
 
           - task: Cache@2
             displayName: 'register apply cache'
@@ -167,6 +185,8 @@ stages:
             displayName: 'terraform plan -destroy'
             env:
               ARM_USE_MSI: "true"
+              ARM_SUBSCRIPTION_ID: dependencies.init_plan.outputs['init_plan.terraform_init.subscription_id']
+              ARM_TENANT_ID: dependencies.init_plan.outputs['init_plan.terraform_init.tenant_id']
 
           - task: Cache@2
             displayName: 'register apply cache'
@@ -229,3 +249,5 @@ stages:
             displayName: 'terraform apply (destroy)'
             env:
               ARM_USE_MSI: "true"
+              ARM_SUBSCRIPTION_ID: dependencies.init_plan.outputs['init_plan.terraform_init.subscription_id']
+              ARM_TENANT_ID: dependencies.init_plan.outputs['init_plan.terraform_init.tenant_id']

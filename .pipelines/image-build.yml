@@ -9,7 +9,7 @@ parameters:
     displayName: "virtual-environments release"
   - name: backendServiceArm
     type: string
-    default: 'vmss'
+    default: 've-vmss'
     displayName: "AzureRm Service Connection Name"
 
 trigger: none
