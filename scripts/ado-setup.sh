@@ -163,7 +163,7 @@ az_vmss_id=$(az vmss show \
   --query 'id' \
   --output tsv)
 
-printf "az_vmss_id: %\n" "$az_vmss_id"
+printf "az_vmss_id: %s\n" "$az_vmss_id"
 
 if [[ -z "$pool_id" ]]
 then
