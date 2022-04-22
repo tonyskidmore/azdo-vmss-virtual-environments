@@ -75,6 +75,7 @@ else
     --process "$ADO_PROJECT_PROCESS"
 fi
 
+exit 0
 
 ######## original script
 # https://docs.microsoft.com/en-us/rest/api/azure/devops/core/Projects/List?view=azure-devops-rest-7.1
