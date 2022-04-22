@@ -130,12 +130,23 @@ else
     --organization "$ADO_ORG"
 fi
 
-#TODO: check if repo is empty before trying to import
-display_message info "Import repo $ADO_REPO_SOURCE into $ADO_REPO"
-az repos import create --git-source-url "$ADO_REPO_SOURCE" \
-  --project "$ADO_PROJECT" \
-  --organization "$ADO_ORG" \
-  --repository "$ADO_REPO"
+# conditionally run import depending on whether files already exist in the repo
+display_message info "Get items from Azure DevOps repo $ADO_REPO"
+repo_id=$(az repos show --repository "$ADO_REPO" --project "$ADO_PROJECT" --organization "$ADO_ORG" --query 'id' --output tsv)
+url="$ADO_ORG/_apis/git/repositories/$repo_id/items?scopePath=/scripts&recursionLevel=Full&includeContentMetadata=true&api-version=7.1-preview.1"
+items=$(curl -s -u ":$AZURE_DEVOPS_EXT_PAT" "$url" )
+count=$(echo "$items" | jq -r '.count')
+
+if [[ $count -gt 0 ]]
+then
+  display_message info "$ADO_REPO is not empty, not attempting to import"
+else
+  display_message info "Import repo $ADO_REPO_SOURCE into $ADO_REPO"
+  az repos import create --git-source-url "$ADO_REPO_SOURCE" \
+    --project "$ADO_PROJECT" \
+    --organization "$ADO_ORG" \
+    --repository "$ADO_REPO"
+fi
 
 display_message info "Get Azure DevOps pool list"
 ado_pool_list=$(az pipelines pool list \
@@ -204,4 +215,5 @@ az pipelines create \
   --yml-path '/.pipelines/vmss-test.yml' \
   --organization "$ADO_ORG" \
   --repository "$ADO_REPO" \
-  --repository-type tfsgit
+  --repository-type tfsgit \
+  --skip-first-run true
