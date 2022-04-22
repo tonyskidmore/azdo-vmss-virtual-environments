@@ -130,7 +130,7 @@ else
     --organization "$ADO_ORG"
 fi
 
-az repos import create --git-source-url $ADO_REPO_SOURCE" \
+az repos import create --git-source-url "$ADO_REPO_SOURCE" \
   --project "$ADO_PROJECT" \
   --organization "$ADO_ORG" \
   --repository "$ADO_REPO"
