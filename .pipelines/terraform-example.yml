@@ -115,6 +115,9 @@ stages:
     jobs:
 
       - job: apply
+        variables:
+          ARM_SUBSCRIPTION_ID: $[ dependencies.init_plan.outputs['init_plan.terraform_init.subscription_id'] ]
+          ARM_TENANT_ID: $[ dependencies.init_plan.outputs['init_plan.terraform_init.tenant_id'] ]
         pool:
           name: ${{ parameters.poolName }}
         displayName: 'Terraform Apply'
@@ -143,8 +146,7 @@ stages:
             displayName: 'terraform apply'
             env:
               ARM_USE_MSI: "true"
-              ARM_SUBSCRIPTION_ID: $[ dependencies.init_plan.outputs['init_plan.terraform_init.subscription_id'] ]
-              ARM_TENANT_ID: $[ dependencies.init_plan.outputs['init_plan.terraform_init.tenant_id'] ]
+
 
           - task: Cache@2
             displayName: 'register apply cache'
@@ -160,6 +162,9 @@ stages:
     jobs:
 
       - job: plan_destroy
+        variables:
+          ARM_SUBSCRIPTION_ID: $[ dependencies.init_plan.outputs['init_plan.terraform_init.subscription_id'] ]
+          ARM_TENANT_ID: $[ dependencies.init_plan.outputs['init_plan.terraform_init.tenant_id'] ]
         pool:
           name: ${{ parameters.poolName }}
         displayName: 'Terraform Plan Destroy'
@@ -186,8 +191,7 @@ stages:
             displayName: 'terraform plan -destroy'
             env:
               ARM_USE_MSI: "true"
-              ARM_SUBSCRIPTION_ID: $[ dependencies.init_plan.outputs['init_plan.terraform_init.subscription_id'] ]
-              ARM_TENANT_ID: $[ dependencies.init_plan.outputs['init_plan.terraform_init.tenant_id'] ]
+
 
           - task: Cache@2
             displayName: 'register apply cache'
@@ -224,6 +228,9 @@ stages:
     jobs:
 
       - job: destroy
+        variables:
+          ARM_SUBSCRIPTION_ID: $[ dependencies.init_plan.outputs['init_plan.terraform_init.subscription_id'] ]
+          ARM_TENANT_ID: $[ dependencies.init_plan.outputs['init_plan.terraform_init.tenant_id'] ]
         pool:
           name: ${{ parameters.poolName }}
         displayName: 'Terraform Destroy'
@@ -250,5 +257,3 @@ stages:
             displayName: 'terraform apply (destroy)'
             env:
               ARM_USE_MSI: "true"
-              ARM_SUBSCRIPTION_ID: $[ dependencies.init_plan.outputs['init_plan.terraform_init.subscription_id'] ]
-              ARM_TENANT_ID: $[ dependencies.init_plan.outputs['init_plan.terraform_init.tenant_id'] ]
