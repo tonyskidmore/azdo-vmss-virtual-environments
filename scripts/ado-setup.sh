@@ -137,13 +137,18 @@ az repos import create --git-source-url "$ADO_REPO_SOURCE" \
   --organization "$ADO_ORG" \
   --repository "$ADO_REPO"
 
+display_message info "Get Azure DevOps pool list"
 ado_pool_list=$(az pipelines pool list \
   --organization "$ADO_ORG" \
   --output json)
 
+display_message info "Get Azure DevOps endpoint list"
+ado_endpoint_list=$(az devops service-endpoint list \
+  --project "$ADO_PROJECT" \
+  --organization "$ADO_ORG" \
+  --output json)
 
-
-project_id=$(echo "$ado_project_list" | jq -r --arg name "$ADO_PROJECT" '.value[] | select (.name==$name) | .id')
+project_id=$(az devops project show --project "$ADO_PROJECT" --org "$ADO_ORG" --query 'id' --output tsv)
 endpoint_id=$(echo "$ado_endpoint_list" | jq -r --arg name "$ADO_SERVICE_CONNECTION" '.[] | select (.name==$name) | .id')
 pool_id=$(echo "$ado_pool_list" | jq -r --arg name "$ADO_POOL_NAME" '.[] | select (.name==$name) | .id')
 
