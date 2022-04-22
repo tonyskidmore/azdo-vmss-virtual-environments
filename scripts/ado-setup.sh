@@ -31,7 +31,7 @@ export ADO_PROJECT_PROCESS=${ADO_PROJECT_PROCESS:-Basic}
 export ADO_PROJECT_VISIBILITY=${ADO_PROJECT_VISIBILITY:-private}
 export ADO_SERVICE_CONNECTION=${ADO_SERVICE_CONNECTION:-ve-vmss}
 export ADO_REPO=${ADO_REPO:-ve-vmss}
-export ADO_REPO_SOURCE=${ADO_REPO:-https://github.com/tonyskidmore/azdo-vmss-virtual-environments}
+export ADO_REPO_SOURCE=${ADO_REPO_SOURCE:-https://github.com/tonyskidmore/azdo-vmss-virtual-environments}
 export AZ_VMSS_RESOURCE_GROUP_NAME=${AZ_VMSS_RESOURCE_GROUP_NAME:-rg-vmss-azdo-agents-01}
 export AZ_VMSS_NAME=${AZ_VMSS_NAME:-vmss-azdo-agents-01}
 
