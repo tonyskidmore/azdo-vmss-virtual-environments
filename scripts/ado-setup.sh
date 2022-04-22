@@ -184,7 +184,7 @@ then
 
   # https://docs.microsoft.com/en-us/rest/api/azure/devops/distributedtask/elasticpools/create?view=azure-devops-rest-7.1
   # POST https://dev.azure.com/{organization}/_apis/distributedtask/elasticpools?poolName={poolName}&authorizeAllPipelines={authorizeAllPipelines}&autoProvisionProjectPools={autoProvisionProjectPools}&projectId={projectId}&api-version=7.1-preview.1
-  url="https://dev.azure.com/$ADO_ORG/_apis/distributedtask/elasticpools?poolName=$ADO_POOL_NAME&authorizeAllPipelines=$ADO_POOL_AUTH_ALL&autoProvisionProjectPools=$ADO_POOL_AUTO_PROVISION&projectId=$project_id&api-version=7.1-preview.1"
+  url="$ADO_ORG/_apis/distributedtask/elasticpools?poolName=$ADO_POOL_NAME&authorizeAllPipelines=$ADO_POOL_AUTH_ALL&autoProvisionProjectPools=$ADO_POOL_AUTO_PROVISION&projectId=$project_id&api-version=7.1-preview.1"
   display_message info "Constructed elastic pool create url:"
   echo "$url"
 
