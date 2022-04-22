@@ -67,6 +67,7 @@ else
   display_message info "Creating Azure DevOps project $ADO_PROJECT"
   az devops project create \
     --name "$ADO_PROJECT" \
+    --organization "$ADO_ORG" \
     --description "$ADO_PROJECT_DESC" \
     --visibility "$ADO_PROJECT_VISIBILITY" \
     --process "$ADO_PROJECT_PROCESS"
