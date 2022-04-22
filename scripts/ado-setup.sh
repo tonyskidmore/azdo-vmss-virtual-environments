@@ -111,6 +111,7 @@ else
     --output json)
 
   # https://docs.microsoft.com/en-us/cli/azure/devops/service-endpoint?view=azure-cli-latest#ext_azure_devops_az_devops_service_endpoint_update-optional-parameters
+  display_message info "Updating Azure DevOps service connection $ADO_SERVICE_CONNECTION"
   az devops service-endpoint update \
     --id "$(echo "$ado_azurerm_sc" | jq -r '.id')" \
     --enable-for-all \
