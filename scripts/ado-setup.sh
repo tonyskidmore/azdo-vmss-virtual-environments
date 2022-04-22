@@ -54,6 +54,8 @@ echo "ADO_SERVICE_CONNECTION: $ADO_SERVICE_CONNECTION"
 echo "AZ_VMSS_RESOURCE_GROUP_NAME: $AZ_VMSS_RESOURCE_GROUP_NAME"
 echo "AZ_VMSS_NAME: $AZ_VMSS_NAME"
 
+#TODO: make devops query function DRY
+#TODO: handle if no projects are returned
 display_message info "Get Azure DevOps current project list"
 ado_project_list=$(az devops project list \
   --organization "$ADO_ORG" \
@@ -73,6 +75,33 @@ else
     --description "$ADO_PROJECT_DESC" \
     --visibility "$ADO_PROJECT_VISIBILITY" \
     --process "$ADO_PROJECT_PROCESS"
+fi
+
+display_message info "Get Azure DevOps endpoint list"
+ado_endpoint_list=$(az devops service-endpoint list \
+  --project "$ADO_PROJECT" \
+  --organization "$ADO_ORG" \
+  --output json)
+
+readarray -t ado_endpoints <<< "$(echo "$ado_endpoint_list" | jq -r '.[].name')"
+declare -p ado_endpoints
+
+# https://docs.microsoft.com/en-us/cli/azure/devops/service-endpoint/azurerm?view=azure-cli-latest#az-devops-service-endpoint-azurerm-create
+export AZURE_DEVOPS_EXT_AZURE_RM_SERVICE_PRINCIPAL_KEY="$ARM_CLIENT_SECRET"
+
+if array_contains ado_endpoints "$ADO_SERVICE_CONNECTION"
+then
+  display_message info "Azure DevOps service endpoint $ADO_SERVICE_CONNECTION already exists"
+else
+display_message info "Creating Azure DevOps service connection $ADO_SERVICE_CONNECTION"
+az devops service-endpoint azurerm create \
+  --azure-rm-service-principal-id "$ARM_CLIENT_ID" \
+  --azure-rm-subscription-id "$ARM_SUBSCRIPTION_ID" \
+  --azure-rm-subscription-name "VMSS Subscription" \
+  --azure-rm-tenant-id "$ARM_TENANT_ID" \
+  --name "$ADO_SERVICE_CONNECTION" \
+  --project "$ADO_PROJECT" \
+  --organization "$ADO_ORG"
 fi
 
 exit 0
