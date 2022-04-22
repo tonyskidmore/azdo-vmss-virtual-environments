@@ -168,21 +168,23 @@ printf "project_id: %s\n" "$project_id"
 printf "endpoint_id: %s\n" "$endpoint_id"
 printf "pool_id: %s\n" "$pool_id"
 
-display_message info "Logging into Azure..."
-az login --service-principal -u "$ARM_CLIENT_ID" -p "$ARM_CLIENT_SECRET" --tenant "$ARM_TENANT_ID"
-az account set --subscription "$ARM_SUBSCRIPTION_ID"
-
-display_message info "Getting VMSS ID"
-az_vmss_id=$(az vmss show \
-  --resource-group "$AZ_VMSS_RESOURCE_GROUP_NAME" \
-  --name "$AZ_VMSS_NAME" \
-  --query 'id' \
-  --output tsv)
-
-printf "az_vmss_id: %s\n" "$az_vmss_id"
-
 if [[ -z "$pool_id" ]]
 then
+
+  # login to Azure and get the VMSS ID
+  display_message info "Logging into Azure..."
+  az login --service-principal -u "$ARM_CLIENT_ID" -p "$ARM_CLIENT_SECRET" --tenant "$ARM_TENANT_ID"
+  az account set --subscription "$ARM_SUBSCRIPTION_ID"
+
+  display_message info "Getting VMSS ID"
+  az_vmss_id=$(az vmss show \
+    --resource-group "$AZ_VMSS_RESOURCE_GROUP_NAME" \
+    --name "$AZ_VMSS_NAME" \
+    --query 'id' \
+    --output tsv)
+
+  printf "az_vmss_id: %s\n" "$az_vmss_id"
+
   display_message info "Creating Azure DevOps pool $ADO_POOL_NAME"
   # copy template and patch params.json with values
   display_message info "Creating $script_path/params.json"
@@ -206,14 +208,35 @@ else
   display_message info "Azure DevOps pool $ADO_POOL_NAME already exists"
 fi
 
-#TODO: tidy up and make all pipelines
-az pipelines create \
-  --name 'vmss-test' \
+display_message info "Get Azure DevOps pipelines list"
+ado_pipeline_list=$(az pipelines list \
   --project "$ADO_PROJECT" \
   --organization "$ADO_ORG" \
-  --description 'Test Azure DevOps VMSS integration' \
-  --yml-path '/.pipelines/vmss-test.yml' \
-  --organization "$ADO_ORG" \
-  --repository "$ADO_REPO" \
-  --repository-type tfsgit \
-  --skip-first-run true
+  --output json)
+
+readarray -t ado_pipelines <<< "$(echo "$ado_pipeline_list" | jq -r '.[].name')"
+declare -p ado_pipelines
+
+declare -A pipelines
+pipelines["vmss-test"]="/.pipelines/vmss-test.yml"
+pipelines["image-build"]="/.pipelines/image-build.yml"
+pipelines["terraform-example"]="/.pipelines/terraform-example.yml"
+
+for pipeline in "${!pipelines[@]}"
+do
+  if array_contains ado_pipelines "$pipeline"
+  then
+    display_message info "Azure DevOps pipeline $pipeline already exists"
+  else
+    display_message info "Creating Azure DevOps pipeline $pipeline"
+    az pipelines create \
+      --name "$pipeline" \
+      --project "$ADO_PROJECT" \
+      --organization "$ADO_ORG" \
+      --yml-path ${pipelines[${pipeline}]} \
+      --organization "$ADO_ORG" \
+      --repository "$ADO_REPO" \
+      --repository-type tfsgit \
+      --skip-first-run true
+  fi
+done
