@@ -135,14 +135,16 @@ stages:
             displayName: 'view directory contents'
 
           - script: |
+              printf "ARM_SUBSCRIPTION_ID: %s\n" "$ARM_SUBSCRIPTION_ID"
+              printf "ARM_TENANT_ID: %s\n" "$ARM_TENANT_ID"
               printf "terraform apply tfplan\n"
               TF_IN_AUTOMATION=true terraform apply tfplan
             workingDirectory: '${{ variables.workingDirectory }}'
             displayName: 'terraform apply'
             env:
               ARM_USE_MSI: "true"
-              ARM_SUBSCRIPTION_ID: dependencies.init_plan.outputs['init_plan.terraform_init.subscription_id']
-              ARM_TENANT_ID: dependencies.init_plan.outputs['init_plan.terraform_init.tenant_id']
+              ARM_SUBSCRIPTION_ID: $[ dependencies.init_plan.outputs['init_plan.terraform_init.subscription_id'] ]
+              ARM_TENANT_ID: $[ dependencies.init_plan.outputs['init_plan.terraform_init.tenant_id'] ]
 
           - task: Cache@2
             displayName: 'register apply cache'
@@ -184,8 +186,8 @@ stages:
             displayName: 'terraform plan -destroy'
             env:
               ARM_USE_MSI: "true"
-              ARM_SUBSCRIPTION_ID: dependencies.init_plan.outputs['init_plan.terraform_init.subscription_id']
-              ARM_TENANT_ID: dependencies.init_plan.outputs['init_plan.terraform_init.tenant_id']
+              ARM_SUBSCRIPTION_ID: $[ dependencies.init_plan.outputs['init_plan.terraform_init.subscription_id'] ]
+              ARM_TENANT_ID: $[ dependencies.init_plan.outputs['init_plan.terraform_init.tenant_id'] ]
 
           - task: Cache@2
             displayName: 'register apply cache'
@@ -248,5 +250,5 @@ stages:
             displayName: 'terraform apply (destroy)'
             env:
               ARM_USE_MSI: "true"
-              ARM_SUBSCRIPTION_ID: dependencies.init_plan.outputs['init_plan.terraform_init.subscription_id']
-              ARM_TENANT_ID: dependencies.init_plan.outputs['init_plan.terraform_init.tenant_id']
+              ARM_SUBSCRIPTION_ID: $[ dependencies.init_plan.outputs['init_plan.terraform_init.subscription_id'] ]
+              ARM_TENANT_ID: $[ dependencies.init_plan.outputs['init_plan.terraform_init.tenant_id'] ]

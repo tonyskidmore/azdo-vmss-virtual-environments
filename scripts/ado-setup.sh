@@ -99,16 +99,26 @@ if array_contains ado_endpoints "$ADO_SERVICE_CONNECTION"
 then
   display_message info "Azure DevOps service endpoint $ADO_SERVICE_CONNECTION already exists"
 else
-display_message info "Creating Azure DevOps service connection $ADO_SERVICE_CONNECTION"
-az devops service-endpoint azurerm create \
-  --azure-rm-service-principal-id "$ARM_CLIENT_ID" \
-  --azure-rm-subscription-id "$ARM_SUBSCRIPTION_ID" \
-  --azure-rm-subscription-name "VMSS Subscription" \
-  --azure-rm-tenant-id "$ARM_TENANT_ID" \
-  --name "$ADO_SERVICE_CONNECTION" \
-  --project "$ADO_PROJECT" \
-  --organization "$ADO_ORG"
+  display_message info "Creating Azure DevOps service connection $ADO_SERVICE_CONNECTION"
+  ado_azurerm_sc=$(az devops service-endpoint azurerm create \
+    --azure-rm-service-principal-id "$ARM_CLIENT_ID" \
+    --azure-rm-subscription-id "$ARM_SUBSCRIPTION_ID" \
+    --azure-rm-subscription-name "VMSS Subscription" \
+    --azure-rm-tenant-id "$ARM_TENANT_ID" \
+    --name "$ADO_SERVICE_CONNECTION" \
+    --project "$ADO_PROJECT" \
+    --organization "$ADO_ORG" \
+    --output json)
+
+  # https://docs.microsoft.com/en-us/cli/azure/devops/service-endpoint?view=azure-cli-latest#ext_azure_devops_az_devops_service_endpoint_update-optional-parameters
+  az devops service-endpoint update \
+    --id "$(echo "$ado_azurerm_sc" | jq -r '.id')" \
+    --enable-for-all \
+    --project "$ADO_PROJECT" \
+    --organization "$ADO_ORG"
 fi
+
+
 
 display_message info "Get Azure DevOps repo list"
 ado_repo_list=$(az repos list \
