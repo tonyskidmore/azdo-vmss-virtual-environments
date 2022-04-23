@@ -64,7 +64,8 @@ echo "AZ_VMSS_NAME: $AZ_VMSS_NAME"
 export AZURE_DEVOPS_EXT_AZURE_RM_SERVICE_PRINCIPAL_KEY="$ARM_CLIENT_SECRET"
 
 #TODO: make devops query function DRY
-#TODO: handle if no projects are returned
+
+##Project
 display_message info "Get Azure DevOps current project list"
 ado_project_list=$(az devops project list \
   --organization "$ADO_ORG" \
@@ -86,74 +87,7 @@ else
     --process "$ADO_PROJECT_PROCESS"
 fi
 
-display_message info "Get Azure DevOps pipelines list"
-ado_pipeline_list=$(az pipelines list \
-  --project "$ADO_PROJECT" \
-  --organization "$ADO_ORG" \
-  --output json)
-
-readarray -t ado_pipelines <<< "$(echo "$ado_pipeline_list" | jq -r '.[].name')"
-declare -p ado_pipelines
-
-declare -A pipelines
-pipelines["vmss-test"]="/.pipelines/vmss-test.yml"
-pipelines["image-build"]="/.pipelines/image-build.yml"
-pipelines["terraform-example"]="/.pipelines/terraform-example.yml"
-
-for pipeline in "${!pipelines[@]}"
-do
-  if array_contains ado_pipelines "$pipeline"
-  then
-    display_message info "Azure DevOps pipeline $pipeline already exists"
-  else
-    display_message info "Creating Azure DevOps pipeline $pipeline"
-    az pipelines create \
-      --name "$pipeline" \
-      --project "$ADO_PROJECT" \
-      --organization "$ADO_ORG" \
-      --yml-path ${pipelines[${pipeline}]} \
-      --organization "$ADO_ORG" \
-      --repository "$ADO_REPO" \
-      --repository-type tfsgit \
-      --skip-first-run true
-  fi
-done
-
-display_message info "Get Azure DevOps endpoint list"
-ado_endpoint_list=$(az devops service-endpoint list \
-  --project "$ADO_PROJECT" \
-  --organization "$ADO_ORG" \
-  --output json)
-
-readarray -t ado_endpoints <<< "$(echo "$ado_endpoint_list" | jq -r '.[].name')"
-declare -p ado_endpoints
-
-
-
-if array_contains ado_endpoints "$ADO_SERVICE_CONNECTION"
-then
-  display_message info "Azure DevOps service endpoint $ADO_SERVICE_CONNECTION already exists"
-else
-  display_message info "Creating Azure DevOps service connection $ADO_SERVICE_CONNECTION"
-  ado_azurerm_sc=$(az devops service-endpoint azurerm create \
-    --azure-rm-service-principal-id "$ARM_CLIENT_ID" \
-    --azure-rm-subscription-id "$ARM_SUBSCRIPTION_ID" \
-    --azure-rm-subscription-name "VMSS Subscription" \
-    --azure-rm-tenant-id "$ARM_TENANT_ID" \
-    --name "$ADO_SERVICE_CONNECTION" \
-    --project "$ADO_PROJECT" \
-    --organization "$ADO_ORG" \
-    --output json)
-
-  # https://docs.microsoft.com/en-us/cli/azure/devops/service-endpoint?view=azure-cli-latest#ext_azure_devops_az_devops_service_endpoint_update-optional-parameters
-  display_message info "Updating Azure DevOps service connection $ADO_SERVICE_CONNECTION"
-  az devops service-endpoint update \
-    --id "$(echo "$ado_azurerm_sc" | jq -r '.id')" \
-    --enable-for-all \
-    --project "$ADO_PROJECT" \
-    --organization "$ADO_ORG"
-fi
-
+## Repos
 display_message info "Get Azure DevOps repo list"
 ado_repo_list=$(az repos list \
   --project "$ADO_PROJECT" \
@@ -192,6 +126,77 @@ else
     --repository "$ADO_REPO"
 fi
 
+## Pipelines
+display_message info "Get Azure DevOps pipelines list"
+ado_pipeline_list=$(az pipelines list \
+  --project "$ADO_PROJECT" \
+  --organization "$ADO_ORG" \
+  --output json)
+
+readarray -t ado_pipelines <<< "$(echo "$ado_pipeline_list" | jq -r '.[].name')"
+declare -p ado_pipelines
+
+declare -A pipelines
+pipelines["vmss-test"]="/.pipelines/vmss-test.yml"
+pipelines["image-build"]="/.pipelines/image-build.yml"
+pipelines["terraform-example"]="/.pipelines/terraform-example.yml"
+
+for pipeline in "${!pipelines[@]}"
+do
+  if array_contains ado_pipelines "$pipeline"
+  then
+    display_message info "Azure DevOps pipeline $pipeline already exists"
+  else
+    display_message info "Creating Azure DevOps pipeline $pipeline"
+    az pipelines create \
+      --name "$pipeline" \
+      --project "$ADO_PROJECT" \
+      --organization "$ADO_ORG" \
+      --yml-path ${pipelines[${pipeline}]} \
+      --organization "$ADO_ORG" \
+      --repository "$ADO_REPO" \
+      --repository-type tfsgit \
+      --skip-first-run true
+  fi
+done
+
+
+## Endpoint
+display_message info "Get Azure DevOps endpoint list"
+ado_endpoint_list=$(az devops service-endpoint list \
+  --project "$ADO_PROJECT" \
+  --organization "$ADO_ORG" \
+  --output json)
+
+readarray -t ado_endpoints <<< "$(echo "$ado_endpoint_list" | jq -r '.[].name')"
+declare -p ado_endpoints
+
+if array_contains ado_endpoints "$ADO_SERVICE_CONNECTION"
+then
+  display_message info "Azure DevOps service endpoint $ADO_SERVICE_CONNECTION already exists"
+else
+  display_message info "Creating Azure DevOps service connection $ADO_SERVICE_CONNECTION"
+  ado_azurerm_sc=$(az devops service-endpoint azurerm create \
+    --azure-rm-service-principal-id "$ARM_CLIENT_ID" \
+    --azure-rm-subscription-id "$ARM_SUBSCRIPTION_ID" \
+    --azure-rm-subscription-name "VMSS Subscription" \
+    --azure-rm-tenant-id "$ARM_TENANT_ID" \
+    --name "$ADO_SERVICE_CONNECTION" \
+    --project "$ADO_PROJECT" \
+    --organization "$ADO_ORG" \
+    --output json)
+
+  # https://docs.microsoft.com/en-us/cli/azure/devops/service-endpoint?view=azure-cli-latest#ext_azure_devops_az_devops_service_endpoint_update-optional-parameters
+  display_message info "Updating Azure DevOps service connection $ADO_SERVICE_CONNECTION"
+  az devops service-endpoint update \
+    --id "$(echo "$ado_azurerm_sc" | jq -r '.id')" \
+    --enable-for-all \
+    --project "$ADO_PROJECT" \
+    --organization "$ADO_ORG"
+fi
+
+
+# Pool
 display_message info "Get Azure DevOps pool list"
 ado_pool_list=$(az pipelines pool list \
   --organization "$ADO_ORG" \
@@ -213,11 +218,8 @@ printf "project_id: %s\n" "$project_id"
 printf "endpoint_id: %s\n" "$endpoint_id"
 printf "pool_id: %s\n" "$pool_id"
 
-
-
 if [[ -z "$pool_id" ]]
 then
-
   # login to Azure and get the VMSS ID
   display_message info "Logging into Azure..."
   az login --service-principal -u "$ARM_CLIENT_ID" -p "$ARM_CLIENT_SECRET" --tenant "$ARM_TENANT_ID"
