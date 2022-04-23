@@ -92,9 +92,10 @@ stages:
               path: $(System.DefaultWorkingDirectory)
 
 
-  - stage: 'validate_plan'
+  - stage: validate_plan
     pool: server
     displayName: "Validate Plan"
+    dependsOn: init
 
     jobs:
 
@@ -118,7 +119,7 @@ stages:
     pool:
       name: ${{ parameters.poolName }}
     displayName: "Terraform Apply"
-    dependsOn: init
+    dependsOn: validate_plan
 
     jobs:
 
@@ -212,9 +213,10 @@ stages:
               path: $(System.DefaultWorkingDirectory)
 
 
-  - stage: 'validate_plan_destroy'
+  - stage: validate_plan_destroy
     pool: server
     displayName: "Validate Destroy"
+    dependsOn: plan_destroy
 
     jobs:
 
@@ -236,7 +238,7 @@ stages:
   - stage: destroy
     pool:
       name: ${{ parameters.poolName }}
-    dependsOn: plan_destroy
+    dependsOn: validate_plan_destroy
     displayName: "Terraform Destroy"
 
     jobs:
