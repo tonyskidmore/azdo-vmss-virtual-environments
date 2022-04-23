@@ -21,7 +21,7 @@ trigger: none
 
 stages:
 
-  - stage: 'init_plan'
+  - stage: init
     pool:
       name: ${{ parameters.poolName }}
     displayName: "Terraform Init & Plan"
@@ -62,7 +62,7 @@ stages:
               echo "##vso[task.setvariable variable=tenant_id;isOutput=true]$ARM_TENANT_ID"
             workingDirectory: '${{ variables.workingDirectory }}'
             displayName: 'set stage vars'
-            name: vars
+            name: arm_vars
 
           - script: |
               printf "terraform init\n"
@@ -122,8 +122,8 @@ stages:
 
       - job: apply
         variables:
-          ARM_SUBSCRIPTION_ID: $[stageDependencies.init_plan.init_plan.outputs['vars.subscription_id']]
-          ARM_TENANT_ID: $[stageDependencies.init_plan.init_plan.outputs['vars.tenant_id']]
+          ARM_SUBSCRIPTION_ID: $[stageDependencies.init.init_plan.outputs['arm_vars.subscription_id']]
+          ARM_TENANT_ID: $[stageDependencies.init.init_plan.outputs['arm_vars.tenant_id']]
         pool:
           name: ${{ parameters.poolName }}
         displayName: 'Terraform Apply'
@@ -170,8 +170,8 @@ stages:
 
       - job: plan_destroy
         variables:
-          ARM_SUBSCRIPTION_ID: $[stageDependencies.init_plan.init_plan.outputs['vars.subscription_id']]
-          ARM_TENANT_ID: $[stageDependencies.init_plan.init_plan.outputs['vars.tenant_id']]
+          ARM_SUBSCRIPTION_ID: $[stageDependencies.init.init_plan.outputs['arm_vars.subscription_id']]
+          ARM_TENANT_ID: $[stageDependencies.init.init_plan.outputs['arm_vars.tenant_id']]
         pool:
           name: ${{ parameters.poolName }}
         displayName: 'Terraform Plan Destroy'
@@ -198,6 +198,7 @@ stages:
             displayName: 'terraform plan -destroy'
             env:
               ARM_USE_MSI: "true"
+              ARM_TEST: $(ARM_SUBSCRIPTION_ID)
 
           - task: Cache@2
             displayName: 'register apply cache'
@@ -236,8 +237,8 @@ stages:
 
       - job: destroy
         variables:
-          ARM_SUBSCRIPTION_ID: $[stageDependencies.init_plan.init_plan.outputs['vars.subscription_id']]
-          ARM_TENANT_ID: $[stageDependencies.init_plan.init_plan.outputs['vars.tenant_id']]
+          ARM_SUBSCRIPTION_ID: $[stageDependencies.init.init_plan.outputs['arm_vars.subscription_id']]
+          ARM_TENANT_ID: $[stageDependencies.init.init_plan.outputs['arm_vars.tenant_id']]
         pool:
           name: ${{ parameters.poolName }}
         displayName: 'Terraform Destroy'
