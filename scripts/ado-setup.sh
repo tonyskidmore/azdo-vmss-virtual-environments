@@ -187,9 +187,10 @@ else
     --output json)
 
   # https://docs.microsoft.com/en-us/cli/azure/devops/service-endpoint?view=azure-cli-latest#ext_azure_devops_az_devops_service_endpoint_update-optional-parameters
-  display_message info "Updating Azure DevOps service connection $ADO_SERVICE_CONNECTION"
+  ado_azurerm_sc=$(echo "$ado_azurerm_sc" | jq -r '.id')
+  display_message info "Updating Azure DevOps service connection $ADO_SERVICE_CONNECTION, id: $ado_azurerm_sc"
   az devops service-endpoint update \
-    --id "$(echo "$ado_azurerm_sc" | jq -r '.id')" \
+    --id "$ado_azurerm_sc" \
     --enable-for-all \
     --project "$ADO_PROJECT" \
     --organization "$ADO_ORG"
@@ -207,7 +208,6 @@ ado_endpoint_list=$(az devops service-endpoint list \
   --project "$ADO_PROJECT" \
   --organization "$ADO_ORG" \
   --output json)
-
 
 project_id=$(az devops project show --project "$ADO_PROJECT" --org "$ADO_ORG" --query 'id' --output tsv)
 endpoint_id=$(echo "$ado_endpoint_list" | jq -r --arg name "$ADO_SERVICE_CONNECTION" '.[] | select (.name==$name) | .id')
