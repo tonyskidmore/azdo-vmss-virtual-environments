@@ -5,7 +5,6 @@
 # the purpose of the pipeline is only to test using Terraform with VMSS and Managed identity
 
 parameters:
-
   - name: poolName
     type: string
     default: 've-vmss'
@@ -17,7 +16,6 @@ parameters:
 variables:
   - name: workingDirectory
     value: $(System.DefaultWorkingDirectory)/terraform/example
-
 
 trigger: none
 
@@ -54,10 +52,17 @@ stages:
 
                 echo "##vso[task.setvariable variable=ARM_SUBSCRIPTION_ID;]$subscription_id"
                 echo "##vso[task.setvariable variable=ARM_TENANT_ID;]$tenant_id"
-                echo "##vso[task.setvariable variable=subscription_id;isOutput=true]$subscription_id"
-                echo "##vso[task.setvariable variable=tenant_id;isOutput=true]$tenant_id"
+
             displayName: 'Set azure environment variables from service connection for ARM_USE_MSI'
-            name: terraform_init
+
+          - script: |
+              echo "ARM_SUBSCRIPTION_ID: $ARM_SUBSCRIPTION_ID"
+              echo "ARM_TENANT_ID: $ARM_TENANT_ID"
+              echo "##vso[task.setvariable variable=subscription_id;isOutput=true]$ARM_SUBSCRIPTION_ID"
+              echo "##vso[task.setvariable variable=tenant_id;isOutput=true]$ARM_TENANT_ID"
+            workingDirectory: '${{ variables.workingDirectory }}'
+            displayName: 'set stage vars'
+            name: vars
 
           - script: |
               printf "terraform init\n"
@@ -107,6 +112,7 @@ stages:
               instructions: 'Please validate the "terraform plan" step before continuing'
               onTimeout: 'resume'
 
+
   - stage: 'apply'
     pool:
       name: ${{ parameters.poolName }}
@@ -116,8 +122,8 @@ stages:
 
       - job: apply
         variables:
-          ARM_SUBSCRIPTION_ID: $[stageDependencies.init_plan.init_plan.outputs['terraform_init.subscription_id']]
-          ARM_TENANT_ID: $[stageDependencies.init_plan.init_plan.outputs['terraform_init.tenant_id']]
+          ARM_SUBSCRIPTION_ID: $[stageDependencies.init_plan.init_plan.outputs['vars.subscription_id']]
+          ARM_TENANT_ID: $[stageDependencies.init_plan.init_plan.outputs['vars.tenant_id']]
         pool:
           name: ${{ parameters.poolName }}
         displayName: 'Terraform Apply'
@@ -138,10 +144,8 @@ stages:
             displayName: 'view directory contents'
 
           - script: |
-              echo "$ARM_SUBSCRIPTION_ID"
-              echo "$ARM_TENANT_ID"
-              echo "$(ARM_SUBSCRIPTION_ID)"
-              echo "($ARM_TENANT_ID)"
+              echo "ARM_SUBSCRIPTION_ID: $ARM_SUBSCRIPTION_ID"
+              echo "ARM_TENANT_ID: $ARM_TENANT_ID"
               env
               printf "terraform apply tfplan\n"
               TF_IN_AUTOMATION=true terraform apply tfplan
@@ -150,12 +154,12 @@ stages:
             env:
               ARM_USE_MSI: "true"
 
-
           - task: Cache@2
             displayName: 'register apply cache'
             inputs:
               key: 'terraform | apply | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
               path: $(System.DefaultWorkingDirectory)
+
 
   - stage: 'plan_destroy'
     pool:
@@ -166,8 +170,8 @@ stages:
 
       - job: plan_destroy
         variables:
-          ARM_SUBSCRIPTION_ID: $[stageDependencies.init_plan.init_plan.outputs['terraform_init.subscription_id']]
-          ARM_TENANT_ID: $[stageDependencies.init_plan.init_plan.outputs['terraform_init.tenant_id']]
+          ARM_SUBSCRIPTION_ID: $[stageDependencies.init_plan.init_plan.outputs['vars.subscription_id']]
+          ARM_TENANT_ID: $[stageDependencies.init_plan.init_plan.outputs['vars.tenant_id']]
         pool:
           name: ${{ parameters.poolName }}
         displayName: 'Terraform Plan Destroy'
@@ -195,12 +199,12 @@ stages:
             env:
               ARM_USE_MSI: "true"
 
-
           - task: Cache@2
             displayName: 'register apply cache'
             inputs:
               key: 'terraform | plan_destroy | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
               path: $(System.DefaultWorkingDirectory)
+
 
   - stage: 'validate_plan_destroy'
     pool: server
@@ -232,8 +236,8 @@ stages:
 
       - job: destroy
         variables:
-          ARM_SUBSCRIPTION_ID: $[stageDependencies.init_plan.init_plan.outputs['terraform_init.subscription_id']]
-          ARM_TENANT_ID: $[stageDependencies.init_plan.init_plan.outputs['terraform_init.tenant_id']]
+          ARM_SUBSCRIPTION_ID: $[stageDependencies.init_plan.init_plan.outputs['vars.subscription_id']]
+          ARM_TENANT_ID: $[stageDependencies.init_plan.init_plan.outputs['vars.tenant_id']]
         pool:
           name: ${{ parameters.poolName }}
         displayName: 'Terraform Destroy'
