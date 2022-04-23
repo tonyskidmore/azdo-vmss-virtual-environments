@@ -29,6 +29,8 @@ stages:
     jobs:
 
       - job: init_plan
+        variables:
+          ARM_USE_MSI: "true"
         displayName: 'Terraform Init & Plan'
         workspace:
           clean: all
@@ -70,16 +72,12 @@ stages:
               TF_IN_AUTOMATION=true terraform init -backend=false
             workingDirectory: '${{ variables.workingDirectory }}'
             displayName: 'terraform init'
-            env:
-              ARM_USE_MSI: "true"
 
           - script: |
               printf "terraform plan -out tfplan\n"
               TF_IN_AUTOMATION=true terraform plan -out tfplan
             workingDirectory: '${{ variables.workingDirectory }}'
             displayName: 'terraform plan'
-            env:
-              ARM_USE_MSI: "true"
 
           - script: |
               ls -al "${{ variables.workingDirectory }}"
@@ -92,34 +90,32 @@ stages:
               path: $(System.DefaultWorkingDirectory)
 
 
-  - stage: validate_plan
-    pool: server
-    displayName: "Validate Plan"
-    dependsOn: init
+  # - stage: validate_plan
+  #   pool: server
+  #   displayName: "Validate Plan"
 
-    jobs:
+  #   jobs:
 
-      - job: waitForValidation
-        displayName: 'Review and approve terraform plan before resuming'
-        timeoutInMinutes: 60
+  #     - job: waitForValidation
+  #       displayName: 'Review and approve terraform plan before resuming'
+  #       timeoutInMinutes: 60
 
-        steps:
+  #       steps:
 
-          - task: ManualValidation@0
-            displayName: 'Manually Validate Plan'
-            timeoutInMinutes: 5
-            inputs:
-              notifyUsers: |
-                example@example.com
-              instructions: 'Please validate the "terraform plan" step before continuing'
-              onTimeout: 'resume'
+  #         - task: ManualValidation@0
+  #           displayName: 'Manually Validate Plan'
+  #           timeoutInMinutes: 5
+  #           inputs:
+  #             notifyUsers: |
+  #               example@example.com
+  #             instructions: 'Please validate the "terraform plan" step before continuing'
+  #             onTimeout: 'resume'
 
 
   - stage: apply
     pool:
       name: ${{ parameters.poolName }}
     displayName: "Terraform Apply"
-    dependsOn: validate_plan
 
     jobs:
 
@@ -128,7 +124,6 @@ stages:
           ARM_SUBSCRIPTION_ID: $[stageDependencies.init.init_plan.outputs['arm_vars.subscription_id']]
           ARM_TENANT_ID: $[stageDependencies.init.init_plan.outputs['arm_vars.tenant_id']]
           ARM_USE_MSI: "true"
-          myStageAVar: $[stageDependencies.init.init_plan.outputs['MyOutputVar.myStageVal']]
         pool:
           name: ${{ parameters.poolName }}
         displayName: 'Terraform Apply'
@@ -149,7 +144,6 @@ stages:
             displayName: 'view directory contents'
 
           - script: |
-              echo $(myStageAVar)
               echo "ARM_SUBSCRIPTION_ID: $ARM_SUBSCRIPTION_ID"
               echo "ARM_TENANT_ID: $ARM_TENANT_ID"
               echo "ARM_USE_MSI: $ARM_USE_MSI"
@@ -170,12 +164,12 @@ stages:
     pool:
       name: ${{ parameters.poolName }}
     displayName: "Terraform Plan Destroy"
-    dependsOn: apply
 
     jobs:
 
       - job: plan_destroy
         variables:
+          ARM_USE_MSI: "true"
           ARM_SUBSCRIPTION_ID: $[stageDependencies.init.init_plan.outputs['arm_vars.subscription_id']]
           ARM_TENANT_ID: $[stageDependencies.init.init_plan.outputs['arm_vars.tenant_id']]
         pool:
@@ -202,9 +196,6 @@ stages:
               TF_IN_AUTOMATION=true terraform plan -destroy -out tfplan
             workingDirectory: '${{ variables.workingDirectory }}'
             displayName: 'terraform plan -destroy'
-            env:
-              ARM_USE_MSI: "true"
-              ARM_TEST: $(ARM_SUBSCRIPTION_ID)
 
           - task: Cache@2
             displayName: 'register apply cache'
@@ -213,38 +204,37 @@ stages:
               path: $(System.DefaultWorkingDirectory)
 
 
-  - stage: validate_plan_destroy
-    pool: server
-    displayName: "Validate Destroy"
-    dependsOn: plan_destroy
+  # - stage: validate_plan_destroy
+  #   pool: server
+  #   displayName: "Validate Destroy"
 
-    jobs:
+  #   jobs:
 
-      - job: waitForValidation
-        displayName: 'Review and approve terraform destroy plan before resuming'
-        timeoutInMinutes: 60
+  #     - job: waitForValidation
+  #       displayName: 'Review and approve terraform destroy plan before resuming'
+  #       timeoutInMinutes: 60
 
-        steps:
+  #       steps:
 
-          - task: ManualValidation@0
-            displayName: 'Manually Validate Destroy'
-            timeoutInMinutes: 5
-            inputs:
-              notifyUsers: |
-                example@example.com
-              instructions: 'Please validate the "terraform plan -destroy" step before continuing'
-              onTimeout: 'resume'
+  #         - task: ManualValidation@0
+  #           displayName: 'Manually Validate Destroy'
+  #           timeoutInMinutes: 5
+  #           inputs:
+  #             notifyUsers: |
+  #               example@example.com
+  #             instructions: 'Please validate the "terraform plan -destroy" step before continuing'
+  #             onTimeout: 'resume'
 
   - stage: destroy
     pool:
       name: ${{ parameters.poolName }}
-    dependsOn: validate_plan_destroy
     displayName: "Terraform Destroy"
 
     jobs:
 
       - job: destroy
         variables:
+          ARM_USE_MSI: "true"
           ARM_SUBSCRIPTION_ID: $[stageDependencies.init.init_plan.outputs['arm_vars.subscription_id']]
           ARM_TENANT_ID: $[stageDependencies.init.init_plan.outputs['arm_vars.tenant_id']]
         pool:
@@ -271,5 +261,4 @@ stages:
               TF_IN_AUTOMATION=true terraform apply tfplan
             workingDirectory: '${{ variables.workingDirectory }}'
             displayName: 'terraform apply (destroy)'
-            env:
-              ARM_USE_MSI: "true"
+
