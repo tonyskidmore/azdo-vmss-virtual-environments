@@ -90,26 +90,26 @@ stages:
               path: $(System.DefaultWorkingDirectory)
 
 
-  # - stage: validate_plan
-  #   pool: server
-  #   displayName: "Validate Plan"
+  - stage: validate_plan
+    pool: server
+    displayName: "Validate Plan"
 
-  #   jobs:
+    jobs:
 
-  #     - job: waitForValidation
-  #       displayName: 'Review and approve terraform plan before resuming'
-  #       timeoutInMinutes: 60
+      - job: waitForValidation
+        displayName: 'Review and approve terraform plan before resuming'
+        timeoutInMinutes: 60
 
-  #       steps:
+        steps:
 
-  #         - task: ManualValidation@0
-  #           displayName: 'Manually Validate Plan'
-  #           timeoutInMinutes: 5
-  #           inputs:
-  #             notifyUsers: |
-  #               example@example.com
-  #             instructions: 'Please validate the "terraform plan" step before continuing'
-  #             onTimeout: 'resume'
+          - task: ManualValidation@0
+            displayName: 'Manually Validate Plan'
+            timeoutInMinutes: 5
+            inputs:
+              notifyUsers: |
+                example@example.com
+              instructions: 'Please validate the "terraform plan" step before continuing'
+              onTimeout: 'resume'
 
 
   - stage: apply
@@ -121,9 +121,12 @@ stages:
 
       - job: apply
         variables:
-          ARM_SUBSCRIPTION_ID: $[stageDependencies.init.init_plan.outputs['arm_vars.subscription_id']]
-          ARM_TENANT_ID: $[stageDependencies.init.init_plan.outputs['arm_vars.tenant_id']]
           ARM_USE_MSI: "true"
+          # hmm this only seems to work to the next stage? Reverting to repeating script in each stage.
+          # https://docs.microsoft.com/en-us/azure/devops/pipelines/process/set-variables-scripts?view=azure-devops&tabs=bash#set-an-output-variable-for-use-in-future-stages
+          # ARM_SUBSCRIPTION_ID: $[stageDependencies.init.init_plan.outputs['arm_vars.subscription_id']]
+          # ARM_TENANT_ID: $[stageDependencies.init.init_plan.outputs['arm_vars.tenant_id']]
+
         pool:
           name: ${{ parameters.poolName }}
         displayName: 'Terraform Apply'
@@ -139,6 +142,23 @@ stages:
             inputs:
               key: 'terraform | plan | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
 
+          - task: AzureCLI@2
+            inputs:
+              scriptType: bash
+              scriptLocation: inlineScript
+              addSpnToEnvironment: true
+              azureSubscription: '${{ parameters.backendServiceArm }}'
+              inlineScript: |
+                set -e
+
+                subscription_id=$(az account show --query 'id' --output tsv)
+                tenant_id=$(az account show --query 'tenantId' --output tsv)
+
+                echo "##vso[task.setvariable variable=ARM_SUBSCRIPTION_ID;]$subscription_id"
+                echo "##vso[task.setvariable variable=ARM_TENANT_ID;]$tenant_id"
+
+            displayName: 'Set azure environment variables from service connection for ARM_USE_MSI'
+
           - script: |
               ls -al "${{ variables.workingDirectory }}"
             displayName: 'view directory contents'
@@ -147,7 +167,6 @@ stages:
               echo "ARM_SUBSCRIPTION_ID: $ARM_SUBSCRIPTION_ID"
               echo "ARM_TENANT_ID: $ARM_TENANT_ID"
               echo "ARM_USE_MSI: $ARM_USE_MSI"
-              env
               printf "terraform apply tfplan\n"
               TF_IN_AUTOMATION=true terraform apply tfplan
             workingDirectory: '${{ variables.workingDirectory }}'
@@ -170,8 +189,8 @@ stages:
       - job: plan_destroy
         variables:
           ARM_USE_MSI: "true"
-          ARM_SUBSCRIPTION_ID: $[stageDependencies.init.init_plan.outputs['arm_vars.subscription_id']]
-          ARM_TENANT_ID: $[stageDependencies.init.init_plan.outputs['arm_vars.tenant_id']]
+          # ARM_SUBSCRIPTION_ID: $[stageDependencies.init.init_plan.outputs['arm_vars.subscription_id']]
+          # ARM_TENANT_ID: $[stageDependencies.init.init_plan.outputs['arm_vars.tenant_id']]
         pool:
           name: ${{ parameters.poolName }}
         displayName: 'Terraform Plan Destroy'
@@ -186,6 +205,23 @@ stages:
             displayName: 'get apply cache'
             inputs:
               key: 'terraform | apply | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
+
+          - task: AzureCLI@2
+            inputs:
+              scriptType: bash
+              scriptLocation: inlineScript
+              addSpnToEnvironment: true
+              azureSubscription: '${{ parameters.backendServiceArm }}'
+              inlineScript: |
+                set -e
+
+                subscription_id=$(az account show --query 'id' --output tsv)
+                tenant_id=$(az account show --query 'tenantId' --output tsv)
+
+                echo "##vso[task.setvariable variable=ARM_SUBSCRIPTION_ID;]$subscription_id"
+                echo "##vso[task.setvariable variable=ARM_TENANT_ID;]$tenant_id"
+
+            displayName: 'Set azure environment variables from service connection for ARM_USE_MSI'
 
           - script: |
               ls -al "${{ variables.workingDirectory }}"
@@ -204,26 +240,26 @@ stages:
               path: $(System.DefaultWorkingDirectory)
 
 
-  # - stage: validate_plan_destroy
-  #   pool: server
-  #   displayName: "Validate Destroy"
+  - stage: validate_plan_destroy
+    pool: server
+    displayName: "Validate Destroy"
 
-  #   jobs:
+    jobs:
 
-  #     - job: waitForValidation
-  #       displayName: 'Review and approve terraform destroy plan before resuming'
-  #       timeoutInMinutes: 60
+      - job: waitForValidation
+        displayName: 'Review and approve terraform destroy plan before resuming'
+        timeoutInMinutes: 60
 
-  #       steps:
+        steps:
 
-  #         - task: ManualValidation@0
-  #           displayName: 'Manually Validate Destroy'
-  #           timeoutInMinutes: 5
-  #           inputs:
-  #             notifyUsers: |
-  #               example@example.com
-  #             instructions: 'Please validate the "terraform plan -destroy" step before continuing'
-  #             onTimeout: 'resume'
+          - task: ManualValidation@0
+            displayName: 'Manually Validate Destroy'
+            timeoutInMinutes: 5
+            inputs:
+              notifyUsers: |
+                example@example.com
+              instructions: 'Please validate the "terraform plan -destroy" step before continuing'
+              onTimeout: 'resume'
 
   - stage: destroy
     pool:
@@ -235,8 +271,8 @@ stages:
       - job: destroy
         variables:
           ARM_USE_MSI: "true"
-          ARM_SUBSCRIPTION_ID: $[stageDependencies.init.init_plan.outputs['arm_vars.subscription_id']]
-          ARM_TENANT_ID: $[stageDependencies.init.init_plan.outputs['arm_vars.tenant_id']]
+          # ARM_SUBSCRIPTION_ID: $[stageDependencies.init.init_plan.outputs['arm_vars.subscription_id']]
+          # ARM_TENANT_ID: $[stageDependencies.init.init_plan.outputs['arm_vars.tenant_id']]
         pool:
           name: ${{ parameters.poolName }}
         displayName: 'Terraform Destroy'
@@ -251,6 +287,23 @@ stages:
             displayName: 'get plan destroy cache'
             inputs:
               key: 'terraform | plan_destroy | "$(Agent.OS)" | "$(Build.BuildNumber)" | "$(Build.SourceVersion)"'
+
+          - task: AzureCLI@2
+            inputs:
+              scriptType: bash
+              scriptLocation: inlineScript
+              addSpnToEnvironment: true
+              azureSubscription: '${{ parameters.backendServiceArm }}'
+              inlineScript: |
+                set -e
+
+                subscription_id=$(az account show --query 'id' --output tsv)
+                tenant_id=$(az account show --query 'tenantId' --output tsv)
+
+                echo "##vso[task.setvariable variable=ARM_SUBSCRIPTION_ID;]$subscription_id"
+                echo "##vso[task.setvariable variable=ARM_TENANT_ID;]$tenant_id"
+
+            displayName: 'Set azure environment variables from service connection for ARM_USE_MSI'
 
           - script: |
               ls -al "${{ variables.workingDirectory }}"
