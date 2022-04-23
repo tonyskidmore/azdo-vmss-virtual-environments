@@ -30,6 +30,8 @@ export AZ_RESOURCE_GROUP_NAME=${AZ_RESOURCE_GROUP_NAME:-rg-ve-images}
 export AZ_LOCATION=${AZ_LOCATION:-uksouth}
 export AZ_ACG_RESOURCE_GROUP_NAME=${AZ_ACG_RESOURCE_GROUP_NAME:-rg-ve-acg-01}
 export AZ_ACG_NAME=${AZ_ACG_NAME:-acg_01}
+export AZ_VMSS_RESOURCE_GROUP_NAME=${AZ_VMSS_RESOURCE_GROUP_NAME:-rg-vmss-azdo-agents-01}
+export AZ_VMSS_NAME=${AZ_VMSS_NAME:-vmss-azdo-agents-01}
 export VE_REPO=${VE_REPO:-https://github.com/actions/virtual-environments.git}
 export VE_IMAGE_PUBLISHER=${VE_IMAGE_PUBLISHER:-actions}
 export VE_IMAGE_OFFER=${VE_IMAGE_OFFER:-virtual-environments}
@@ -51,6 +53,8 @@ echo "AZ_RESOURCE_GROUP_NAME=${AZ_RESOURCE_GROUP_NAME}"
 echo "AZ_LOCATION=${AZ_LOCATION}"
 echo "AZ_ACG_RESOURCE_GROUP_NAME=${AZ_ACG_RESOURCE_GROUP_NAME}"
 echo "AZ_ACG_NAME=${AZ_ACG_NAME}"
+echo "AZ_VMSS_RESOURCE_GROUP_NAME=${AZ_VMSS_RESOURCE_GROUP_NAME}"
+echo "AZ_VMSS_NAME=${AZ_VMSS_NAME}"
 echo "VE_REPO=${VE_REPO}"
 echo "VE_IMAGE_PUBLISHER=${VE_IMAGE_PUBLISHER}"
 echo "VE_IMAGE_OFFER=${VE_IMAGE_OFFER}"
@@ -241,9 +245,30 @@ then
   all_versions=("${new_version[@]}" "${sorted[@]}" )
   declare -p all_versions
 
-  # declare and array of the VM Image versions to keep
+  # declare an array of the VM Image versions to keep
   images_to_keep=("${all_versions[@]:0:$VE_IMAGES_TO_KEEP}")
   declare -p images_to_keep
+
+  display_message info "Getting VMSS $AZ_VMSS_NAME current settings"
+  vmss_show=$(az vmss show --resource-group "$AZ_VMSS_RESOURCE_GROUP_NAME" --name "$AZ_VMSS_NAME" --output json 2>/dev/null || echo "")
+
+  if [[ -n "$vmss_show" ]]
+  then
+    vmss_image_ref_id=$(echo "$vmss_show" | jq -r '.virtualMachineProfile.storageProfile.imageReference.id')
+    display_message info "Currently assigned image reference id:"
+    printf "%s\n" "$vmss_image_ref_id"
+    # https://stackoverflow.com/questions/3162385/how-to-split-a-string-in-shell-and-get-the-last-field
+    printf -v img_ref_ver "%s" "${vmss_image_ref_id##*/}"
+    if array_contains images_to_keep "$img_ref_ver"
+    then
+      display_message warning "$img_ref_ver is already in the list of images to keep"
+    else
+      display_message warning "Adding currently assigned version $img_ref_ver to the list of images to keep"
+      images_to_keep+=("$img_ref_ver")
+    fi
+  else
+    display_message warning "VM Scale Set $AZ_VMSS_NAME does not exist or unable to retrieve details"
+  fi
 
   display_message info "Number of current images: ${#all_versions[*]}"
   display_message info "Number of images to keep: $VE_IMAGES_TO_KEEP"

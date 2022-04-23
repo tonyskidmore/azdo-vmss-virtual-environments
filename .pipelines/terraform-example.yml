@@ -116,8 +116,8 @@ stages:
 
       - job: apply
         variables:
-          ARM_SUBSCRIPTION_ID: $[ dependencies.init_plan.outputs['init_plan.terraform_init.subscription_id'] ]
-          ARM_TENANT_ID: $[ dependencies.init_plan.outputs['init_plan.terraform_init.tenant_id'] ]
+          ARM_SUBSCRIPTION_ID: $[stageDependencies.init_plan.init_plan.outputs['terraform_init.subscription_id']]
+          ARM_TENANT_ID: $[stageDependencies.init_plan.init_plan.outputs['terraform_init.tenant_id']]
         pool:
           name: ${{ parameters.poolName }}
         displayName: 'Terraform Apply'
@@ -163,8 +163,8 @@ stages:
 
       - job: plan_destroy
         variables:
-          ARM_SUBSCRIPTION_ID: $[ dependencies.init_plan.outputs['init_plan.terraform_init.subscription_id'] ]
-          ARM_TENANT_ID: $[ dependencies.init_plan.outputs['init_plan.terraform_init.tenant_id'] ]
+          ARM_SUBSCRIPTION_ID: $[stageDependencies.init_plan.init_plan.outputs['terraform_init.subscription_id']]
+          ARM_TENANT_ID: $[stageDependencies.init_plan.init_plan.outputs['terraform_init.tenant_id']]
         pool:
           name: ${{ parameters.poolName }}
         displayName: 'Terraform Plan Destroy'
@@ -229,8 +229,8 @@ stages:
 
       - job: destroy
         variables:
-          ARM_SUBSCRIPTION_ID: $[ dependencies.init_plan.outputs['init_plan.terraform_init.subscription_id'] ]
-          ARM_TENANT_ID: $[ dependencies.init_plan.outputs['init_plan.terraform_init.tenant_id'] ]
+          ARM_SUBSCRIPTION_ID: $[stageDependencies.init_plan.init_plan.outputs['terraform_init.subscription_id']]
+          ARM_TENANT_ID: $[stageDependencies.init_plan.init_plan.outputs['terraform_init.tenant_id']]
         pool:
           name: ${{ parameters.poolName }}
         displayName: 'Terraform Destroy'

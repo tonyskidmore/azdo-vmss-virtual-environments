@@ -60,6 +60,9 @@ echo "ADO_REPO_SOURCE: $ADO_REPO_SOURCE"
 echo "AZ_VMSS_RESOURCE_GROUP_NAME: $AZ_VMSS_RESOURCE_GROUP_NAME"
 echo "AZ_VMSS_NAME: $AZ_VMSS_NAME"
 
+# https://docs.microsoft.com/en-us/cli/azure/devops/service-endpoint/azurerm?view=azure-cli-latest#az-devops-service-endpoint-azurerm-create
+export AZURE_DEVOPS_EXT_AZURE_RM_SERVICE_PRINCIPAL_KEY="$ARM_CLIENT_SECRET"
+
 #TODO: make devops query function DRY
 #TODO: handle if no projects are returned
 display_message info "Get Azure DevOps current project list"
@@ -83,6 +86,39 @@ else
     --process "$ADO_PROJECT_PROCESS"
 fi
 
+display_message info "Get Azure DevOps pipelines list"
+ado_pipeline_list=$(az pipelines list \
+  --project "$ADO_PROJECT" \
+  --organization "$ADO_ORG" \
+  --output json)
+
+readarray -t ado_pipelines <<< "$(echo "$ado_pipeline_list" | jq -r '.[].name')"
+declare -p ado_pipelines
+
+declare -A pipelines
+pipelines["vmss-test"]="/.pipelines/vmss-test.yml"
+pipelines["image-build"]="/.pipelines/image-build.yml"
+pipelines["terraform-example"]="/.pipelines/terraform-example.yml"
+
+for pipeline in "${!pipelines[@]}"
+do
+  if array_contains ado_pipelines "$pipeline"
+  then
+    display_message info "Azure DevOps pipeline $pipeline already exists"
+  else
+    display_message info "Creating Azure DevOps pipeline $pipeline"
+    az pipelines create \
+      --name "$pipeline" \
+      --project "$ADO_PROJECT" \
+      --organization "$ADO_ORG" \
+      --yml-path ${pipelines[${pipeline}]} \
+      --organization "$ADO_ORG" \
+      --repository "$ADO_REPO" \
+      --repository-type tfsgit \
+      --skip-first-run true
+  fi
+done
+
 display_message info "Get Azure DevOps endpoint list"
 ado_endpoint_list=$(az devops service-endpoint list \
   --project "$ADO_PROJECT" \
@@ -92,8 +128,7 @@ ado_endpoint_list=$(az devops service-endpoint list \
 readarray -t ado_endpoints <<< "$(echo "$ado_endpoint_list" | jq -r '.[].name')"
 declare -p ado_endpoints
 
-# https://docs.microsoft.com/en-us/cli/azure/devops/service-endpoint/azurerm?view=azure-cli-latest#az-devops-service-endpoint-azurerm-create
-export AZURE_DEVOPS_EXT_AZURE_RM_SERVICE_PRINCIPAL_KEY="$ARM_CLIENT_SECRET"
+
 
 if array_contains ado_endpoints "$ADO_SERVICE_CONNECTION"
 then
@@ -118,8 +153,6 @@ else
     --project "$ADO_PROJECT" \
     --organization "$ADO_ORG"
 fi
-
-
 
 display_message info "Get Azure DevOps repo list"
 ado_repo_list=$(az repos list \
@@ -170,6 +203,7 @@ ado_endpoint_list=$(az devops service-endpoint list \
   --organization "$ADO_ORG" \
   --output json)
 
+
 project_id=$(az devops project show --project "$ADO_PROJECT" --org "$ADO_ORG" --query 'id' --output tsv)
 endpoint_id=$(echo "$ado_endpoint_list" | jq -r --arg name "$ADO_SERVICE_CONNECTION" '.[] | select (.name==$name) | .id')
 pool_id=$(echo "$ado_pool_list" | jq -r --arg name "$ADO_POOL_NAME" '.[] | select (.name==$name) | .id')
@@ -178,6 +212,8 @@ display_message info "Obtained IDs"
 printf "project_id: %s\n" "$project_id"
 printf "endpoint_id: %s\n" "$endpoint_id"
 printf "pool_id: %s\n" "$pool_id"
+
+
 
 if [[ -z "$pool_id" ]]
 then
@@ -218,36 +254,3 @@ then
 else
   display_message info "Azure DevOps pool $ADO_POOL_NAME already exists"
 fi
-
-display_message info "Get Azure DevOps pipelines list"
-ado_pipeline_list=$(az pipelines list \
-  --project "$ADO_PROJECT" \
-  --organization "$ADO_ORG" \
-  --output json)
-
-readarray -t ado_pipelines <<< "$(echo "$ado_pipeline_list" | jq -r '.[].name')"
-declare -p ado_pipelines
-
-declare -A pipelines
-pipelines["vmss-test"]="/.pipelines/vmss-test.yml"
-pipelines["image-build"]="/.pipelines/image-build.yml"
-pipelines["terraform-example"]="/.pipelines/terraform-example.yml"
-
-for pipeline in "${!pipelines[@]}"
-do
-  if array_contains ado_pipelines "$pipeline"
-  then
-    display_message info "Azure DevOps pipeline $pipeline already exists"
-  else
-    display_message info "Creating Azure DevOps pipeline $pipeline"
-    az pipelines create \
-      --name "$pipeline" \
-      --project "$ADO_PROJECT" \
-      --organization "$ADO_ORG" \
-      --yml-path ${pipelines[${pipeline}]} \
-      --organization "$ADO_ORG" \
-      --repository "$ADO_REPO" \
-      --repository-type tfsgit \
-      --skip-first-run true
-  fi
-done
