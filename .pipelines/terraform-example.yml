@@ -1,8 +1,9 @@
 ---
 
 # Pipeline for simple Terraform testing Azure VMSS self-hosted agents
-# to keep things as simple as possible we will not be using remote state, state will only exist during pipeline execution
-# the purpose of the pipeline is only to test using Terraform with VMSS and Managed identity
+# to keep things as simple as possible we will not be using remote state,
+# state will only exist during pipeline execution the purpose of the pipeline
+# is only to test using Terraform with VMSS and Managed identity
 
 parameters:
   - name: poolName
@@ -314,4 +315,3 @@ stages:
               TF_IN_AUTOMATION=true terraform apply tfplan
             workingDirectory: '${{ variables.workingDirectory }}'
             displayName: 'terraform apply (destroy)'
-
