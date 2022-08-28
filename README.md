@@ -11,4 +11,4 @@ Using the same [virtual-environments](https://github.com/actions/virtual-environ
 
 Currently only the Ubuntu 20.04 Linux agent is supported.
 
-For further details please visit the [Azure DevOps Self-Hosted VMSS Agents](series/ado-vmss-agents/) blog series.
+For further details please visit the [Azure DevOps Self-Hosted VMSS Agents](https://www.skidmore.co.uk/series/ado-vmss-agents/) blog series.
